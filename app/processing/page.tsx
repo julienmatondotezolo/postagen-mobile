@@ -114,26 +114,14 @@ export default function Processing() {
         // --- Fetch brand identity from IndexedDB ---
         const brandIdentity = await getBrandIdentity();
 
-        // --- Build request payload (filter out videos — only send images to GPT) ---
-        const imageFiles = mediaFiles.filter((m) => m.type === "image");
-        if (imageFiles.length === 0) {
-          toast.error(
-            "Geen afbeeldingen gevonden. Upload minstens één foto om een plan te genereren.",
-            { duration: 6000 }
-          );
-          setHasError(true);
-          apiDoneRef.current = true;
-          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-          return;
-        }
-
+        // --- Build request payload (send ALL media — backend handles video frame extraction) ---
         const requestBody = {
           brandIdentity: {
             websiteUrl: brandIdentity?.websiteUrl,
             description: brandIdentity?.description,
             businessName: brandIdentity?.businessName,
           },
-          media: imageFiles.map((m) => ({
+          media: mediaFiles.map((m) => ({
             id: m.id,
             base64: m.base64,
             type: m.type,
