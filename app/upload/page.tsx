@@ -179,6 +179,14 @@ export default function MediaUpload() {
           continue;
         }
 
+        // Reject files >50MB (large videos cause browser hang via base64/IndexedDB)
+        const MAX_FILE_SIZE_MB = 50;
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+          failCount++;
+          failedFiles.push(`${file.name} (te groot, max ${MAX_FILE_SIZE_MB}MB)`);
+          continue;
+        }
+
         // Compress images to reduce payload size (max 1920px, 80% quality)
         if (file.type.startsWith("image/")) {
           try {

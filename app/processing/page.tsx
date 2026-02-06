@@ -39,7 +39,7 @@ interface GenerateResponse {
   planDescription: string;
 }
 
-const API_TIMEOUT_MS = 90_000; // 90 seconds — GPT Vision can be slow with multiple images
+const API_TIMEOUT_MS = 120_000; // 120 seconds — GPT Vision can be slow with 10+ images
 
 /**
  * Convert a base64 data URL to a Blob.
