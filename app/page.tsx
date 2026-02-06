@@ -1,15 +1,106 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { saveBrandIdentity } from "@/lib/db";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { saveBrandIdentity, getBrandIdentity } from "@/lib/db";
+import { API_BASE_URL } from "@/lib/config";
+import toast from "react-hot-toast";
 import Image from "next/image";
 
-export default function IdentitySetup() {
+const LOSTERIA_FALLBACK = {
+  businessName: "L'Osteria Deerlijk",
+  websiteUrl: "https://l-osteria.be",
+  description:
+    "L'Osteria Deerlijk — Authentiek Italiaans familierestaurant gerund door Angelo en Jessica Bombini sinds 2003. " +
+    "Gelegen aan Stationsstraat 232, 8540 Deerlijk. Onze familiegeschiedenis gaat terug tot 1964 in Leuven " +
+    "(Gianni Bombini). Wij serveren authentieke Italiaanse gerechten in een warme, familiale sfeer. " +
+    "Specialiteiten: Bruschetta tradizionale, Carpaccio di manzo, Scampi flambé, Filetto al naturale, " +
+    "huisgemaakte pasta. Open dinsdag t/m zaterdag. Gesloten op maandag en zondag.",
+};
+
+interface BrandApiResponse {
+  businessName: string;
+  websiteUrl: string;
+  description: string;
+  tone?: string;
+  languages?: string[];
+  menuHighlights?: string[];
+}
+
+function IdentitySetupInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isPreloading, setIsPreloading] = useState(true);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const brandSlug = searchParams.get("brand");
+        if (brandSlug) {
+          await preseedBrand(brandSlug);
+        } else {
+          await loadExistingBrand();
+        }
+      } catch (error) {
+        console.error("Error initializing brand data:", error);
+      } finally {
+        setIsPreloading(false);
+      }
+    };
+
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const preseedBrand = async (slug: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/brand/${slug}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: BrandApiResponse = await res.json();
+
+      setWebsiteUrl(data.websiteUrl || "");
+      setDescription(data.description || "");
+
+      // Save to IndexedDB immediately
+      await saveBrandIdentity({
+        websiteUrl: data.websiteUrl,
+        description: data.description,
+        businessName: data.businessName,
+        analyzedAt: Date.now(),
+      });
+    } catch {
+      // Fallback to hardcoded data for known slugs
+      console.warn("Backend unreachable, using hardcoded fallback");
+      if (slug.includes("osteria")) {
+        setWebsiteUrl(LOSTERIA_FALLBACK.websiteUrl);
+        setDescription(LOSTERIA_FALLBACK.description);
+
+        await saveBrandIdentity({
+          websiteUrl: LOSTERIA_FALLBACK.websiteUrl,
+          description: LOSTERIA_FALLBACK.description,
+          businessName: LOSTERIA_FALLBACK.businessName,
+          analyzedAt: Date.now(),
+        });
+      } else {
+        toast.error("Kon merkgegevens niet laden. Vul de velden handmatig in.", {
+          duration: 4000,
+        });
+      }
+    }
+  };
+
+  const loadExistingBrand = async () => {
+    const existing = await getBrandIdentity();
+    if (existing) {
+      setWebsiteUrl(existing.websiteUrl || "");
+      setDescription(existing.description || "");
+    }
+  };
 
   const handleAnalyze = async () => {
     if (!websiteUrl && !description.trim()) {
@@ -23,11 +114,12 @@ export default function IdentitySetup() {
         description: description || undefined,
         analyzedAt: Date.now(),
       });
-      
+
       // Navigate to upload screen
       router.push("/upload");
     } catch (error) {
       console.error("Error saving brand identity:", error);
+      toast.error("Kon merkidentiteit niet opslaan. Probeer het opnieuw.");
     } finally {
       setIsLoading(false);
     }
@@ -38,11 +130,11 @@ export default function IdentitySetup() {
       <div className="mx-auto max-w-md">
         {/* Logo */}
         <div className="mb-12 flex items-center gap-2">
-          <Image 
-            src="/PostaGen-Logo.png" 
-            alt="Postagène Logo" 
-            width={140} 
-            height={40} 
+          <Image
+            src="/PostaGen-Logo.png"
+            alt="Postagène Logo"
+            width={140}
+            height={40}
             className="h-auto w-auto"
             priority
           />
@@ -51,7 +143,10 @@ export default function IdentitySetup() {
         {/* Main Heading */}
         <div className="mb-8">
           <h1 className="mb-4 text-4xl font-bold leading-tight text-gray-900">
-            Establish your <span className="font-serif italic font-normal text-violet-600">brand identity</span>
+            Establish your{" "}
+            <span className="font-serif italic font-normal text-violet-600">
+              brand identity
+            </span>
           </h1>
           <p className="text-base leading-relaxed text-gray-600">
             Let&apos;s sync your digital presence to create content that sounds
@@ -84,8 +179,9 @@ export default function IdentitySetup() {
               type="url"
               value={websiteUrl}
               onChange={(e) => setWebsiteUrl(e.target.value)}
-              placeholder="Paste your link here..."
-              className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-12 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all hover:border-purple-200 hover:shadow-sm"
+              placeholder={isPreloading ? "Laden..." : "Paste your link here..."}
+              disabled={isPreloading}
+              className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-12 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
             />
           </div>
         </div>
@@ -96,9 +192,7 @@ export default function IdentitySetup() {
             <div className="w-full border-t border-gray-200"></div>
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-white px-4 text-sm text-gray-400">
-              OR
-            </span>
+            <span className="bg-white px-4 text-sm text-gray-400">OR</span>
           </div>
         </div>
 
@@ -110,16 +204,21 @@ export default function IdentitySetup() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Tell us about your business, values, and audience"
+            placeholder={
+              isPreloading
+                ? "Laden..."
+                : "Tell us about your business, values, and audience"
+            }
+            disabled={isPreloading}
             rows={6}
-            className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-4 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none hover:border-purple-200 hover:shadow-sm"
+            className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-4 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
           />
         </div>
 
         {/* Analyze Button */}
         <button
           onClick={handleAnalyze}
-          disabled={isLoading || (!websiteUrl && !description.trim())}
+          disabled={isLoading || isPreloading || (!websiteUrl && !description.trim())}
           className="w-full rounded-2xl bg-[#8B5CF6] px-6 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-200 transition-all hover:bg-purple-600 hover:shadow-2xl hover:shadow-purple-300 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isLoading ? (
@@ -167,5 +266,20 @@ export default function IdentitySetup() {
         </button>
       </div>
     </div>
+  );
+}
+
+// Wrap in Suspense because useSearchParams() requires it in Next.js App Router
+export default function IdentitySetup() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-mood-onboarding flex items-center justify-center">
+          <div className="animate-spin h-8 w-8 border-4 border-purple-500 border-t-transparent rounded-full"></div>
+        </div>
+      }
+    >
+      <IdentitySetupInner />
+    </Suspense>
   );
 }

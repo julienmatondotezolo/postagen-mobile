@@ -11,6 +11,7 @@ export interface MediaFile {
 export interface BrandIdentity {
   websiteUrl?: string;
   description?: string;
+  businessName?: string;
   analyzedAt?: number;
 }
 

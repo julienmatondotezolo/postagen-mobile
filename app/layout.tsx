@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
+import ToastProvider from "@/components/ToastProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -45,6 +46,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+        <ToastProvider />
         {children}
         <BottomNav />
       </body>
