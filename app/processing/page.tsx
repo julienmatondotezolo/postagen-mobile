@@ -41,13 +41,45 @@ interface GenerateResponse {
 
 const API_TIMEOUT_MS = 90_000; // 90 seconds — GPT Vision can be slow with multiple images
 
+/**
+ * Convert a base64 data URL to a Blob.
+ */
+function base64ToBlob(dataUrl: string): Blob {
+  const [header, data] = dataUrl.split(",");
+  const mimeMatch = header.match(/data:([^;]+)/);
+  const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+}
+
+/**
+ * Get a file extension from a MIME type.
+ */
+function extFromMime(mime: string): string {
+  const map: Record<string, string> = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/heic": ".heic",
+    "image/heif": ".heif",
+    "image/webp": ".webp",
+    "video/mp4": ".mp4",
+    "video/quicktime": ".mov",
+    "video/webm": ".webm",
+  };
+  return map[mime] || ".bin";
+}
+
 export default function Processing() {
   const router = useRouter();
   const [progress, setProgress] = useState(0);
   const [currentStepText, setCurrentStepText] = useState(ANALYSIS_STEPS[0].text);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
   const apiDoneRef = useRef(false);
   const animFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -55,30 +87,20 @@ export default function Processing() {
 
   /**
    * Exponential-decay progress animation.
-   *
-   * - Assumes ~12s for 1-3 images, ~25s for 5+ images
-   * - Quickly reaches ~40%, then slows as it approaches 90%
-   * - NEVER reaches 100% until the API actually responds
-   * - When API responds, immediately jumps to 100%
    */
   const runProgressAnimation = useCallback(() => {
     const tick = () => {
-      if (apiDoneRef.current) return; // stop once API is done
+      if (apiDoneRef.current) return;
 
-      const elapsed = (Date.now() - startTimeRef.current) / 1000; // seconds
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
       const imgCount = imageCountRef.current;
 
-      // Estimate total time based on image count
       const estimatedTotal = imgCount <= 3 ? 12 : imgCount <= 5 ? 20 : 30;
-
-      // Exponential decay: fast at first, asymptotically approaches 90%
-      // p = 90 * (1 - e^(-k*t))  where k controls speed
-      const k = 2.5 / estimatedTotal; // tuned so we reach ~80% at estimatedTotal
+      const k = 2.5 / estimatedTotal;
       const newProgress = Math.min(90, 90 * (1 - Math.exp(-k * elapsed)));
 
       setProgress(newProgress);
 
-      // Update step text based on progress
       for (let i = ANALYSIS_STEPS.length - 1; i >= 0; i--) {
         if (newProgress >= ANALYSIS_STEPS[i].threshold) {
           setCurrentStepText(ANALYSIS_STEPS[i].text);
@@ -95,6 +117,7 @@ export default function Processing() {
   useEffect(() => {
     if (hasGenerated) return;
     setHasGenerated(true);
+    isMountedRef.current = true;
 
     const generatePlan = async () => {
       try {
@@ -103,6 +126,9 @@ export default function Processing() {
           router.push("/upload");
           return;
         }
+
+        // Bail out if the component already unmounted (React 18 strict mode)
+        if (!isMountedRef.current) return;
 
         imageCountRef.current = mediaFiles.length;
         startTimeRef.current = Date.now();
@@ -114,24 +140,30 @@ export default function Processing() {
         // --- Fetch brand identity from IndexedDB ---
         const brandIdentity = await getBrandIdentity();
 
-        // --- Build request payload (send ALL media — backend handles video frame extraction) ---
-        const requestBody = {
-          brandIdentity: {
+        // --- Build FormData (multipart/form-data) ---
+        const formData = new FormData();
+
+        // Append brandIdentity as JSON string
+        formData.append(
+          "brandIdentity",
+          JSON.stringify({
             websiteUrl: brandIdentity?.websiteUrl,
             description: brandIdentity?.description,
             businessName: brandIdentity?.businessName,
-          },
-          media: mediaFiles.map((m) => ({
-            id: m.id,
-            base64: m.base64,
-            type: m.type,
-            mimeType: m.mimeType,
-          })),
-        };
+          })
+        );
 
-        // --- API call with timeout + abort ---
+        // Convert each base64 media item to a Blob and append as "files"
+        for (const m of mediaFiles) {
+          const blob = base64ToBlob(m.base64);
+          const filename = `${m.id}${extFromMime(m.mimeType)}`;
+          formData.append("files", blob, filename);
+        }
+
+        // --- API call with timeout ---
+        // Create AbortController INSIDE the async function (not in useEffect scope)
+        // to avoid React 18 strict mode cleanup aborting the fetch immediately.
         const controller = new AbortController();
-        abortControllerRef.current = controller;
 
         const timeoutId = setTimeout(() => {
           controller.abort();
@@ -141,14 +173,17 @@ export default function Processing() {
         try {
           response = await fetch(`${API_BASE_URL}/api/generate`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody),
+            // DO NOT set Content-Type — browser sets multipart boundary automatically
+            body: formData,
             signal: controller.signal,
           });
         } catch (fetchError: unknown) {
           clearTimeout(timeoutId);
           apiDoneRef.current = true;
           if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+
+          // If component unmounted, don't update state
+          if (!isMountedRef.current) return;
 
           if (
             fetchError instanceof DOMException &&
@@ -169,6 +204,9 @@ export default function Processing() {
         }
 
         clearTimeout(timeoutId);
+
+        // If component unmounted, don't process response
+        if (!isMountedRef.current) return;
 
         if (!response.ok) {
           apiDoneRef.current = true;
@@ -194,6 +232,8 @@ export default function Processing() {
         }
 
         const data: GenerateResponse = await response.json();
+
+        if (!isMountedRef.current) return;
 
         // --- Validate response ---
         if (!data.posts || data.posts.length === 0) {
@@ -241,6 +281,8 @@ export default function Processing() {
           "Draft"
         );
 
+        if (!isMountedRef.current) return;
+
         // --- Navigate to plan view after brief delay ---
         setTimeout(() => {
           router.push(`/plan/${newPlan.id}`);
@@ -249,6 +291,9 @@ export default function Processing() {
         console.error("Error generating plan:", error);
         apiDoneRef.current = true;
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+
+        if (!isMountedRef.current) return;
+
         toast.error(
           "Er is een onverwachte fout opgetreden. Probeer het opnieuw.",
           { duration: 6000 }
@@ -260,11 +305,10 @@ export default function Processing() {
     generatePlan();
 
     return () => {
+      // Mark unmounted — do NOT abort the controller here (React 18 strict mode fix)
+      isMountedRef.current = false;
       apiDoneRef.current = true;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -360,7 +404,7 @@ export default function Processing() {
                     transition:
                       progress >= 100
                         ? "width 0.3s ease-out"
-                        : "none", // instant updates from rAF, smooth jump to 100%
+                        : "none",
                   }}
                 ></div>
               </div>
