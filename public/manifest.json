@@ -1,0 +1,24 @@
+{
+  "name": "Postagen - Professional social media posts in 2 minutes",
+  "short_name": "Postagen",
+  "description": "Professional social media posts in 2 minutes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#8B5CF6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/PostaGen-Symbol.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/PostaGen-Symbol.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
