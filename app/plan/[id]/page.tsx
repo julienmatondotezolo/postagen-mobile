@@ -480,20 +480,26 @@ export default function VisualPlan() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                            <svg
-                              className="h-12 w-12 text-gray-300"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                              />
-                            </svg>
+                          <div className="relative h-full w-full">
+                            <video
+                              src={getMediaUrl(post.media)}
+                              className="h-full w-full object-cover"
+                              preload="metadata"
+                              muted
+                              playsInline
+                            />
+                            {/* Video Play Icon Overlay */}
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/10 pointer-events-none">
+                              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm shadow-lg">
+                                <svg
+                                  className="h-7 w-7 text-gray-900 ml-0.5"
+                                  fill="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </div>
+                            </div>
                           </div>
                         )}
                         <div className="absolute bottom-6 left-6 right-6 flex gap-3">
