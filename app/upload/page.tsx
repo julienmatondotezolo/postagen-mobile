@@ -370,7 +370,7 @@ export default function MediaUpload() {
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-purple-500"></div>
             <span className="text-sm font-medium text-purple-600">
-              STEP 2 OF 3
+              STEP 2 OF 4
             </span>
           </div>
         </div>

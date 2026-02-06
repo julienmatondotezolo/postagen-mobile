@@ -212,7 +212,7 @@ export async function clearAllData(): Promise<void> {
     // Clear media
     const allMedia = await getAllMedia();
     for (const media of allMedia) {
-      URL.revokeObjectURL(media.url);
+      URL.revokeObjectURL(media.base64);
     }
     await db.clear("media");
 

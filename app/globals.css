@@ -223,3 +223,45 @@ button:active, a:active {
   background-clip: text;
   animation: gradient-shift 3s ease infinite;
 }
+
+/* Safe area for bottom nav on iOS */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Bottom Sheet Animations */
+@keyframes sheetSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheetSlideDown {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.sheet-enter {
+  animation: sheetSlideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sheet-exit {
+  animation: sheetSlideDown 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Backdrop fade */
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.backdrop-enter {
+  animation: backdropFadeIn 0.2s ease-out;
+}

@@ -9,6 +9,7 @@ export interface MediaFile {
 }
 
 export interface BrandIdentity {
+  id?: string;
   websiteUrl?: string;
   description?: string;
   businessName?: string;
@@ -90,7 +91,8 @@ export async function getDB(): Promise<IDBPDatabase<PostagenDB>> {
         postsStore.createIndex("by-createdAt", "createdAt");
       } else if (oldVersion < 2) {
         // Add new index for existing store
-        const postsStore = db.transaction!.objectStore("posts");
+        const tx = (db as unknown as { transaction: IDBTransaction }).transaction;
+        const postsStore = tx.objectStore("posts");
         if (!postsStore.indexNames.contains("by-createdAt")) {
           postsStore.createIndex("by-createdAt", "createdAt");
         }
