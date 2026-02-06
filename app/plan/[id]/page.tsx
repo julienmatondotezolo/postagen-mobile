@@ -8,6 +8,9 @@ import {
   getAllMedia,
   getMediaUrl,
   deletePlan,
+  deletePost,
+  updatePost,
+  updatePlan,
   type Post,
   type MediaFile,
   type Plan,
@@ -59,6 +62,13 @@ export default function VisualPlan() {
   const [showRightArrow, setShowRightArrow] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Post editing state
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editedCaption, setEditedCaption] = useState("");
+  // Post delete state
+  const [showDeletePostModal, setShowDeletePostModal] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
+  const [isDeletingPost, setIsDeletingPost] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -153,6 +163,60 @@ export default function VisualPlan() {
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
+    }
+  };
+
+  // --- Post editing ---
+  const handleStartEdit = (post: Post) => {
+    setEditingPostId(post.id);
+    setEditedCaption(post.caption);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPostId) return;
+    try {
+      await updatePost(editingPostId, { caption: editedCaption });
+      toast.success("Post updated");
+      setEditingPostId(null);
+      setEditedCaption("");
+      await loadPlan(); // Reload to reflect changes
+    } catch (error) {
+      console.error("Error updating post:", error);
+      toast.error("Failed to update post");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPostId(null);
+    setEditedCaption("");
+  };
+
+  // --- Post deletion ---
+  const handleConfirmDeletePost = (postId: string) => {
+    setPostToDelete(postId);
+    setShowDeletePostModal(true);
+  };
+
+  const handleDeletePost = async () => {
+    if (!postToDelete || !plan) return;
+    setIsDeletingPost(true);
+    try {
+      // 1. Delete the post from IndexedDB
+      await deletePost(postToDelete);
+
+      // 2. Update the plan's postIds array
+      const newPostIds = plan.postIds.filter((id) => id !== postToDelete);
+      await updatePlan(plan.id, { postIds: newPostIds });
+
+      toast.success("Post deleted");
+      setShowDeletePostModal(false);
+      setPostToDelete(null);
+      await loadPlan(); // Reload to reflect changes
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      toast.error("Failed to delete post");
+    } finally {
+      setIsDeletingPost(false);
     }
   };
 
@@ -365,119 +429,164 @@ export default function VisualPlan() {
                 </p>
               </div>
             ) : (
-              filteredPosts.map((post) => (
-                <div
-                  key={post.id}
-                  className="overflow-hidden rounded-[40px] bg-white border border-gray-50 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all"
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-6 pt-6">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`h-2 w-2 rounded-full ${getColorForTime(post.scheduledTime)}`}
-                      ></div>
-                      <span className="text-xs font-bold text-gray-400 tracking-wide">
-                        {post.scheduledTime} •{" "}
-                        {post.dayName?.toUpperCase() || "MONDAY"}
-                      </span>
-                    </div>
-                    <button className="text-gray-300">
-                      <svg
-                        className="h-5 w-5"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle cx="5" cy="12" r="1.5" />
-                        <circle cx="12" cy="12" r="1.5" />
-                        <circle cx="19" cy="12" r="1.5" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* Image */}
-                  {post.media && (
-                    <div className="relative mx-4 mt-4 aspect-4/3 overflow-hidden rounded-[32px] bg-gray-50 group">
-                      {post.media.type === "image" ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={getMediaUrl(post.media)}
-                          alt="Post"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                          <svg
-                            className="h-12 w-12 text-gray-300"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                      <div className="absolute bottom-6 left-6 right-6 flex gap-3">
-                        <button className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-white/90 py-3 text-sm font-bold text-gray-900 backdrop-blur-md shadow-sm active:scale-[0.98] transition-all hover:bg-white hover:shadow-md">
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                            />
-                          </svg>
-                          Swap
-                        </button>
-                        <button
-                          onClick={() => router.push(`/post/${post.id}`)}
-                          className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-white/90 py-3 text-sm font-bold text-gray-900 backdrop-blur-md shadow-sm active:scale-[0.98] transition-all hover:bg-white hover:shadow-md"
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                            />
-                          </svg>
-                          Edit
-                        </button>
+              filteredPosts.map((post) => {
+                const isEditingThis = editingPostId === post.id;
+                return (
+                  <div
+                    key={post.id}
+                    className="overflow-hidden rounded-[40px] bg-white border border-gray-50 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all"
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-6 pt-6">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`h-2 w-2 rounded-full ${getColorForTime(post.scheduledTime)}`}
+                        ></div>
+                        <span className="text-xs font-bold text-gray-400 tracking-wide">
+                          {post.scheduledTime} •{" "}
+                          {post.dayName?.toUpperCase() || "MONDAY"}
+                        </span>
                       </div>
+                      {/* Delete post button */}
+                      <button
+                        onClick={() => handleConfirmDeletePost(post.id)}
+                        className="text-gray-300 hover:text-red-500 transition-colors"
+                        aria-label="Delete post"
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
                     </div>
-                  )}
 
-                  {/* Title and Description */}
-                  <div className="px-6 pb-8 pt-6">
-                    <h3 className="mb-2 text-xl font-bold text-gray-900 leading-tight">
-                      {post.caption.split(".")[0] || "New Post"}
-                    </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
-                      {post.caption}
-                    </p>
+                    {/* Image */}
+                    {post.media && (
+                      <div className="relative mx-4 mt-4 aspect-4/3 overflow-hidden rounded-[32px] bg-gray-50 group">
+                        {post.media.type === "image" ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={getMediaUrl(post.media)}
+                            alt="Post"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                            <svg
+                              className="h-12 w-12 text-gray-300"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="absolute bottom-6 left-6 right-6 flex gap-3">
+                          <button className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-white/90 py-3 text-sm font-bold text-gray-900 backdrop-blur-md shadow-sm active:scale-[0.98] transition-all hover:bg-white hover:shadow-md">
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                              />
+                            </svg>
+                            Swap
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (isEditingThis) {
+                                handleSaveEdit();
+                              } else {
+                                handleStartEdit(post);
+                              }
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-white/90 py-3 text-sm font-bold text-gray-900 backdrop-blur-md shadow-sm active:scale-[0.98] transition-all hover:bg-white hover:shadow-md"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                              />
+                            </svg>
+                            {isEditingThis ? "Save" : "Edit"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Title and Description / Inline Edit */}
+                    <div className="px-6 pb-8 pt-6">
+                      {isEditingThis ? (
+                        <div>
+                          <textarea
+                            value={editedCaption}
+                            onChange={(e) => setEditedCaption(e.target.value)}
+                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-purple-500 focus:outline-none transition-all resize-none"
+                            rows={4}
+                          />
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              onClick={handleCancelEdit}
+                              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSaveEdit}
+                              className="flex-1 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 transition-all"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <h3 className="mb-2 text-xl font-bold text-gray-900 leading-tight">
+                            {post.caption.split(".")[0] || "New Post"}
+                          </h3>
+                          <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+                            {post.caption}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Plan Confirmation Modal */}
       {showDeleteModal && plan && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm px-6">
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl slide-up">
@@ -528,6 +637,83 @@ export default function VisualPlan() {
                 className="flex-1 rounded-2xl bg-red-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-red-100 transition-all hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isDeleting ? (
+                  <>
+                    <svg
+                      className="h-4 w-4 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Post Confirmation Modal */}
+      {showDeletePostModal && postToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm px-6">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl slide-up">
+            <div className="mb-4 flex justify-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+                <svg
+                  className="h-7 w-7 text-red-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <h3 className="mb-2 text-center text-xl font-bold text-gray-900">
+              Delete Post?
+            </h3>
+            <p className="mb-6 text-center text-sm text-gray-500">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeletePostModal(false);
+                  setPostToDelete(null);
+                }}
+                disabled={isDeletingPost}
+                className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeletePost}
+                disabled={isDeletingPost}
+                className="flex-1 rounded-2xl bg-red-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-red-100 transition-all hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeletingPost ? (
                   <>
                     <svg
                       className="h-4 w-4 animate-spin"

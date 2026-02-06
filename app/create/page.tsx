@@ -43,20 +43,24 @@ export default function IdentitySetup() {
   }, []);
 
   /**
-   * Call the backend to scrape and analyze the website URL.
+   * Call the backend to scrape and analyze the website URL and/or description.
    */
   const handleAnalyzeUrl = async () => {
-    if (!websiteUrl.trim()) {
-      toast.error("Voer een website-URL in om te analyseren.");
+    if (!websiteUrl.trim() && !description.trim()) {
+      toast.error("Voer een website-URL of beschrijving in om te analyseren.");
       return;
     }
 
     setIsAnalyzing(true);
     try {
+      const payload: { url?: string; description?: string } = {};
+      if (websiteUrl.trim()) payload.url = websiteUrl.trim();
+      if (description.trim()) payload.description = description.trim();
+
       const res = await fetch(`${API_BASE_URL}/api/brand/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: websiteUrl.trim() }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(30000), // 30s timeout for scraping + GPT
       });
 
@@ -214,7 +218,7 @@ export default function IdentitySetup() {
             />
           </div>
 
-          {/* Analyze URL button */}
+          {/* Analyze URL button - shows when URL is entered */}
           {websiteUrl.trim() && (
             <button
               onClick={handleAnalyzeUrl}
@@ -243,7 +247,7 @@ export default function IdentitySetup() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  <span>Analyzing website...</span>
+                  <span>Analyzing...</span>
                 </>
               ) : (
                 <>
@@ -294,6 +298,58 @@ export default function IdentitySetup() {
             rows={6}
             className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-4 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
           />
+
+          {/* Analyze description button - shows when description is entered but no URL */}
+          {description.trim() && !websiteUrl.trim() && (
+            <button
+              onClick={handleAnalyzeUrl}
+              disabled={isAnalyzing || isLoadingExisting}
+              className="mt-3 w-full rounded-2xl border-2 border-purple-200 bg-purple-50 px-6 py-3 text-sm font-semibold text-purple-700 transition-all hover:bg-purple-100 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isAnalyzing ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                    />
+                  </svg>
+                  <span>Analyze my brand</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Continue Button */}
