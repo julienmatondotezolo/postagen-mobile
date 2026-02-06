@@ -5,6 +5,76 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { saveMedia, getAllMedia, deleteMedia, getMediaUrl, type MediaFile } from "@/lib/db";
 import toast, { Toaster } from "react-hot-toast";
 
+/**
+ * Compress an image file to a maximum dimension and quality.
+ * Returns the original file if it's already small enough.
+ */
+async function compressImage(file: File, maxDimension: number = 1920, quality: number = 0.8): Promise<File> {
+  // Skip if file is already small (<1MB)
+  if (file.size < 1024 * 1024) return file;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      // Skip if image is already small enough
+      if (img.width <= maxDimension && img.height <= maxDimension && file.size < 3 * 1024 * 1024) {
+        resolve(file);
+        return;
+      }
+
+      // Calculate new dimensions maintaining aspect ratio
+      let width = img.width;
+      let height = img.height;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height / width) * maxDimension);
+          width = maxDimension;
+        } else {
+          width = Math.round((width / height) * maxDimension);
+          height = maxDimension;
+        }
+      }
+
+      // Draw to canvas and export
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob || blob.size >= file.size) {
+            // Compression didn't help, return original
+            resolve(file);
+            return;
+          }
+          const compressed = new File([blob], file.name, { type: "image/jpeg" });
+          console.log(`📷 Compressed: ${(file.size / 1024 / 1024).toFixed(1)}MB → ${(compressed.size / 1024 / 1024).toFixed(1)}MB (${width}x${height})`);
+          resolve(compressed);
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file); // Return original on error
+    };
+
+    img.src = url;
+  });
+}
+
 export default function MediaUpload() {
   const router = useRouter();
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
@@ -107,6 +177,15 @@ export default function MediaUpload() {
           failCount++;
           failedFiles.push(file.name);
           continue;
+        }
+
+        // Compress images to reduce payload size (max 1920px, 80% quality)
+        if (file.type.startsWith("image/")) {
+          try {
+            file = await compressImage(file, 1920, 0.8);
+          } catch (error) {
+            console.warn(`⚠️ Could not compress ${file.name}, using original`);
+          }
         }
 
         // Check max limit

@@ -176,10 +176,19 @@ export default function Processing() {
 
           const errorText = await response.text().catch(() => "");
           console.error(`API error ${response.status}: ${errorText}`);
-          toast.error(
-            `Er ging iets mis bij het genereren (${response.status}). Probeer het opnieuw.`,
-            { duration: 6000 }
-          );
+
+          let errorMessage: string;
+          if (response.status === 413) {
+            errorMessage =
+              "De upload is te groot. Probeer minder of kleinere bestanden te uploaden.";
+          } else if (response.status === 400) {
+            errorMessage =
+              "Geen geldige media gevonden. Upload minstens één foto of video.";
+          } else {
+            errorMessage = `Er ging iets mis bij het genereren (${response.status}). Probeer het opnieuw.`;
+          }
+
+          toast.error(errorMessage, { duration: 6000 });
           setHasError(true);
           return;
         }
