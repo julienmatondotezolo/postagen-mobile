@@ -1,129 +1,128 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, Suspense } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { saveBrandIdentity, getBrandIdentity } from "@/lib/db";
 import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
-const LOSTERIA_FALLBACK = {
-  businessName: "L'Osteria Deerlijk",
-  websiteUrl: "https://l-osteria.be",
-  description:
-    "L'Osteria Deerlijk — Authentiek Italiaans familierestaurant gerund door Angelo en Jessica Bombini sinds 2003. " +
-    "Gelegen aan Stationsstraat 232, 8540 Deerlijk. Onze familiegeschiedenis gaat terug tot 1964 in Leuven " +
-    "(Gianni Bombini). Wij serveren authentieke Italiaanse gerechten in een warme, familiale sfeer. " +
-    "Specialiteiten: Bruschetta tradizionale, Carpaccio di manzo, Scampi flambé, Filetto al naturale, " +
-    "huisgemaakte pasta. Open dinsdag t/m zaterdag. Gesloten op maandag en zondag.",
-};
-
-interface BrandApiResponse {
+interface AnalyzeBrandResponse {
   businessName: string;
-  websiteUrl: string;
   description: string;
-  tone?: string;
-  languages?: string[];
-  menuHighlights?: string[];
+  tone: string;
+  menuHighlights: string[];
 }
 
-function IdentitySetupInner() {
+export default function IdentitySetup() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [description, setDescription] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isPreloading, setIsPreloading] = useState(true);
+  const [businessName, setBusinessName] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingExisting, setIsLoadingExisting] = useState(true);
 
+  // Load any previously saved brand identity
   useEffect(() => {
-    const init = async () => {
+    const loadExisting = async () => {
       try {
-        const brandSlug = searchParams.get("brand");
-        if (brandSlug) {
-          await preseedBrand(brandSlug);
-        } else {
-          await loadExistingBrand();
+        const existing = await getBrandIdentity();
+        if (existing) {
+          setWebsiteUrl(existing.websiteUrl || "");
+          setDescription(existing.description || "");
+          setBusinessName(existing.businessName || "");
         }
       } catch (error) {
-        console.error("Error initializing brand data:", error);
+        console.error("Error loading existing brand data:", error);
       } finally {
-        setIsPreloading(false);
+        setIsLoadingExisting(false);
       }
     };
-
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadExisting();
   }, []);
 
-  const preseedBrand = async (slug: string) => {
+  /**
+   * Call the backend to scrape and analyze the website URL.
+   */
+  const handleAnalyzeUrl = async () => {
+    if (!websiteUrl.trim()) {
+      toast.error("Voer een website-URL in om te analyseren.");
+      return;
+    }
+
+    setIsAnalyzing(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/brand/${slug}`, {
-        signal: AbortSignal.timeout(5000),
+      const res = await fetch(`${API_BASE_URL}/api/brand/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: websiteUrl.trim() }),
+        signal: AbortSignal.timeout(30000), // 30s timeout for scraping + GPT
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: BrandApiResponse = await res.json();
 
-      setWebsiteUrl(data.websiteUrl || "");
-      setDescription(data.description || "");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        const msg =
+          errorData?.message ||
+          "Kon de website niet analyseren. Controleer de URL of beschrijf je merk handmatig.";
+        toast.error(msg, { duration: 5000 });
+        return;
+      }
 
-      // Save to IndexedDB immediately
-      await saveBrandIdentity({
-        websiteUrl: data.websiteUrl,
-        description: data.description,
-        businessName: data.businessName,
-        analyzedAt: Date.now(),
-      });
-    } catch {
-      // Fallback to hardcoded data for known slugs
-      console.warn("Backend unreachable, using hardcoded fallback");
-      if (slug.includes("osteria")) {
-        setWebsiteUrl(LOSTERIA_FALLBACK.websiteUrl);
-        setDescription(LOSTERIA_FALLBACK.description);
+      const data: AnalyzeBrandResponse = await res.json();
 
-        await saveBrandIdentity({
-          websiteUrl: LOSTERIA_FALLBACK.websiteUrl,
-          description: LOSTERIA_FALLBACK.description,
-          businessName: LOSTERIA_FALLBACK.businessName,
-          analyzedAt: Date.now(),
+      // Fill in the fields with the analysis
+      if (data.businessName) setBusinessName(data.businessName);
+      if (data.description) setDescription(data.description);
+
+      toast.success(
+        `${data.businessName || "Merk"} succesvol geanalyseerd!`,
+        { duration: 3000 }
+      );
+    } catch (error) {
+      console.error("Error analyzing brand:", error);
+      if (error instanceof DOMException && error.name === "AbortError") {
+        toast.error("De analyse duurde te lang. Probeer het opnieuw.", {
+          duration: 5000,
         });
       } else {
-        toast.error("Kon merkgegevens niet laden. Vul de velden handmatig in.", {
-          duration: 4000,
-        });
+        toast.error(
+          "Kon geen verbinding maken met de server. Beschrijf je merk handmatig.",
+          { duration: 5000 }
+        );
       }
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
-  const loadExistingBrand = async () => {
-    const existing = await getBrandIdentity();
-    if (existing) {
-      setWebsiteUrl(existing.websiteUrl || "");
-      setDescription(existing.description || "");
-    }
-  };
-
-  const handleAnalyze = async () => {
+  /**
+   * Save the brand identity and navigate to the upload page.
+   */
+  const handleContinue = async () => {
     if (!websiteUrl && !description.trim()) {
       return;
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
     try {
       await saveBrandIdentity({
         websiteUrl: websiteUrl || undefined,
         description: description || undefined,
+        businessName: businessName || undefined,
         analyzedAt: Date.now(),
       });
 
-      // Navigate to upload screen
       router.push("/upload");
     } catch (error) {
       console.error("Error saving brand identity:", error);
       toast.error("Kon merkidentiteit niet opslaan. Probeer het opnieuw.");
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
+
+  const isFormValid = websiteUrl.trim() || description.trim();
 
   return (
     <div className="min-h-screen bg-mood-onboarding px-6 py-8">
@@ -182,7 +181,7 @@ function IdentitySetupInner() {
           </p>
         </div>
 
-        {/* Website Input */}
+        {/* Website Input + Analyze Button */}
         <div className="mb-6">
           <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
             Website or Socials
@@ -207,11 +206,65 @@ function IdentitySetupInner() {
               type="url"
               value={websiteUrl}
               onChange={(e) => setWebsiteUrl(e.target.value)}
-              placeholder={isPreloading ? "Laden..." : "Paste your link here..."}
-              disabled={isPreloading}
+              placeholder={
+                isLoadingExisting ? "Laden..." : "Paste your link here..."
+              }
+              disabled={isLoadingExisting || isAnalyzing}
               className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-12 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
             />
           </div>
+
+          {/* Analyze URL button */}
+          {websiteUrl.trim() && (
+            <button
+              onClick={handleAnalyzeUrl}
+              disabled={isAnalyzing || isLoadingExisting}
+              className="mt-3 w-full rounded-2xl border-2 border-purple-200 bg-purple-50 px-6 py-3 text-sm font-semibold text-purple-700 transition-all hover:bg-purple-100 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isAnalyzing ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span>Analyzing website...</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  <span>Analyze my brand</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Divider */}
@@ -233,23 +286,23 @@ function IdentitySetupInner() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={
-              isPreloading
+              isLoadingExisting
                 ? "Laden..."
                 : "Tell us about your business, values, and audience"
             }
-            disabled={isPreloading}
+            disabled={isLoadingExisting}
             rows={6}
             className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-4 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
           />
         </div>
 
-        {/* Analyze Button */}
+        {/* Continue Button */}
         <button
-          onClick={handleAnalyze}
-          disabled={isLoading || isPreloading || (!websiteUrl && !description.trim())}
+          onClick={handleContinue}
+          disabled={isSaving || isLoadingExisting || isAnalyzing || !isFormValid}
           className="w-full rounded-2xl bg-[#8B5CF6] px-6 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-200 transition-all hover:bg-purple-600 hover:shadow-2xl hover:shadow-purple-300 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {isLoading ? (
+          {isSaving ? (
             <>
               <svg
                 className="animate-spin h-5 w-5"
@@ -271,11 +324,11 @@ function IdentitySetupInner() {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              <span>Analyzing...</span>
+              <span>Saving...</span>
             </>
           ) : (
             <>
-              <span>Analyze my brand</span>
+              <span>Continue</span>
               <svg
                 className="h-5 w-5"
                 fill="none"
@@ -286,7 +339,7 @@ function IdentitySetupInner() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                  d="M13 7l5 5m0 0l-5 5m5-5H6"
                 />
               </svg>
             </>
@@ -294,20 +347,5 @@ function IdentitySetupInner() {
         </button>
       </div>
     </div>
-  );
-}
-
-// Wrap in Suspense because useSearchParams() requires it in Next.js App Router
-export default function IdentitySetup() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-mood-onboarding flex items-center justify-center">
-          <div className="animate-spin h-8 w-8 border-4 border-purple-500 border-t-transparent rounded-full"></div>
-        </div>
-      }
-    >
-      <IdentitySetupInner />
-    </Suspense>
   );
 }

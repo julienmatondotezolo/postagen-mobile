@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   getAllMedia,
   getBrandIdentity,
@@ -13,11 +13,11 @@ import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
 
 const ANALYSIS_STEPS = [
-  "Analyzing your menu...",
-  "Crafting perfect captions...",
-  "Selecting best angles...",
-  "Optimizing your content...",
-  "Finalizing your plan...",
+  { text: "Received images, starting analysis...", threshold: 10 },
+  { text: "Analyzing your images with AI...", threshold: 30 },
+  { text: "Generating captions...", threshold: 50 },
+  { text: "Optimizing schedule...", threshold: 70 },
+  { text: "Finalizing your plan...", threshold: 90 },
 ];
 
 interface GenerateResponsePost {
@@ -39,18 +39,60 @@ interface GenerateResponse {
   planDescription: string;
 }
 
-const API_TIMEOUT_MS = 60_000;
+const API_TIMEOUT_MS = 90_000; // 90 seconds — GPT Vision can be slow with multiple images
 
 export default function Processing() {
   const router = useRouter();
   const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStepText, setCurrentStepText] = useState(ANALYSIS_STEPS[0].text);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [hasError, setHasError] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const apiDoneRef = useRef(false);
+  const animFrameRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const imageCountRef = useRef<number>(1);
+
+  /**
+   * Exponential-decay progress animation.
+   *
+   * - Assumes ~12s for 1-3 images, ~25s for 5+ images
+   * - Quickly reaches ~40%, then slows as it approaches 90%
+   * - NEVER reaches 100% until the API actually responds
+   * - When API responds, immediately jumps to 100%
+   */
+  const runProgressAnimation = useCallback(() => {
+    const tick = () => {
+      if (apiDoneRef.current) return; // stop once API is done
+
+      const elapsed = (Date.now() - startTimeRef.current) / 1000; // seconds
+      const imgCount = imageCountRef.current;
+
+      // Estimate total time based on image count
+      const estimatedTotal = imgCount <= 3 ? 12 : imgCount <= 5 ? 20 : 30;
+
+      // Exponential decay: fast at first, asymptotically approaches 90%
+      // p = 90 * (1 - e^(-k*t))  where k controls speed
+      const k = 2.5 / estimatedTotal; // tuned so we reach ~80% at estimatedTotal
+      const newProgress = Math.min(90, 90 * (1 - Math.exp(-k * elapsed)));
+
+      setProgress(newProgress);
+
+      // Update step text based on progress
+      for (let i = ANALYSIS_STEPS.length - 1; i >= 0; i--) {
+        if (newProgress >= ANALYSIS_STEPS[i].threshold) {
+          setCurrentStepText(ANALYSIS_STEPS[i].text);
+          break;
+        }
+      }
+
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    animFrameRef.current = requestAnimationFrame(tick);
+  }, []);
 
   useEffect(() => {
-    // Prevent duplicate plan creation (React Strict Mode runs useEffect twice)
     if (hasGenerated) return;
     setHasGenerated(true);
 
@@ -62,30 +104,12 @@ export default function Processing() {
           return;
         }
 
-        // --- Progress animation: smoothly fill to ~80% ---
-        const progressInterval = setInterval(() => {
-          setProgress((prev) => {
-            if (prev >= 80) {
-              clearInterval(progressInterval);
-              return 80;
-            }
-            // Ease-out: slow down as we approach 80
-            const remaining = 80 - prev;
-            const increment = Math.max(0.3, remaining * 0.04);
-            return Math.min(80, prev + increment);
-          });
-        }, 100);
+        imageCountRef.current = mediaFiles.length;
+        startTimeRef.current = Date.now();
+        apiDoneRef.current = false;
 
-        // --- Step text rotation ---
-        const stepInterval = setInterval(() => {
-          setCurrentStep((prev) => {
-            if (prev >= ANALYSIS_STEPS.length - 1) {
-              clearInterval(stepInterval);
-              return ANALYSIS_STEPS.length - 1;
-            }
-            return prev + 1;
-          });
-        }, 2000);
+        // Start the smooth progress animation
+        runProgressAnimation();
 
         // --- Fetch brand identity from IndexedDB ---
         const brandIdentity = await getBrandIdentity();
@@ -99,7 +123,7 @@ export default function Processing() {
           },
           media: mediaFiles.map((m) => ({
             id: m.id,
-            base64: m.base64, // Already a data URL from fileToBase64()
+            base64: m.base64,
             type: m.type,
             mimeType: m.mimeType,
           })),
@@ -123,10 +147,13 @@ export default function Processing() {
           });
         } catch (fetchError: unknown) {
           clearTimeout(timeoutId);
-          clearInterval(progressInterval);
-          clearInterval(stepInterval);
+          apiDoneRef.current = true;
+          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
 
-          if (fetchError instanceof DOMException && fetchError.name === "AbortError") {
+          if (
+            fetchError instanceof DOMException &&
+            fetchError.name === "AbortError"
+          ) {
             toast.error(
               "De verwerking duurde te lang. Probeer het opnieuw met minder foto's.",
               { duration: 6000 }
@@ -144,8 +171,8 @@ export default function Processing() {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          clearInterval(progressInterval);
-          clearInterval(stepInterval);
+          apiDoneRef.current = true;
+          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
 
           const errorText = await response.text().catch(() => "");
           console.error(`API error ${response.status}: ${errorText}`);
@@ -161,8 +188,8 @@ export default function Processing() {
 
         // --- Validate response ---
         if (!data.posts || data.posts.length === 0) {
-          clearInterval(progressInterval);
-          clearInterval(stepInterval);
+          apiDoneRef.current = true;
+          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
           toast.error(
             "De AI heeft geen posts kunnen genereren. Probeer het opnieuw.",
             { duration: 6000 }
@@ -171,11 +198,11 @@ export default function Processing() {
           return;
         }
 
-        // --- Jump to 100% ---
-        clearInterval(progressInterval);
-        clearInterval(stepInterval);
+        // --- IMMEDIATELY jump to 100% ---
+        apiDoneRef.current = true;
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
         setProgress(100);
-        setCurrentStep(ANALYSIS_STEPS.length - 1);
+        setCurrentStepText("Done! Preparing your plan...");
 
         // --- Save posts to IndexedDB ---
         for (const post of data.posts) {
@@ -211,6 +238,8 @@ export default function Processing() {
         }, 800);
       } catch (error) {
         console.error("Error generating plan:", error);
+        apiDoneRef.current = true;
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
         toast.error(
           "Er is een onverwachte fout opgetreden. Probeer het opnieuw.",
           { duration: 6000 }
@@ -221,8 +250,9 @@ export default function Processing() {
 
     generatePlan();
 
-    // Cleanup: abort in-flight request on unmount
     return () => {
+      apiDoneRef.current = true;
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -234,7 +264,7 @@ export default function Processing() {
     setHasError(false);
     setHasGenerated(false);
     setProgress(0);
-    setCurrentStep(0);
+    setCurrentStepText(ANALYSIS_STEPS[0].text);
   };
 
   return (
@@ -243,9 +273,7 @@ export default function Processing() {
         {/* Central Icon */}
         <div className="mb-12 flex justify-center">
           <div className="relative">
-            {/* Pulsing background glow */}
             <div className="absolute inset-0 animate-pulse rounded-full bg-purple-200/40 blur-3xl scale-150"></div>
-
             <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-2xl shadow-purple-100">
               <div className="flex items-center justify-center gap-1">
                 {hasError ? (
@@ -285,9 +313,7 @@ export default function Processing() {
         {/* Title */}
         {hasError ? (
           <>
-            <h1 className="mb-6 text-4xl font-bold text-gray-900">
-              Oeps!
-            </h1>
+            <h1 className="mb-6 text-4xl font-bold text-gray-900">Oeps!</h1>
             <h2 className="mb-6 text-2xl font-serif italic font-normal text-red-500">
               Er ging iets mis
             </h2>
@@ -312,16 +338,21 @@ export default function Processing() {
 
             {/* Current Step */}
             <p className="mb-16 text-base text-gray-600 font-medium">
-              {ANALYSIS_STEPS[currentStep] ||
-                ANALYSIS_STEPS[ANALYSIS_STEPS.length - 1]}
+              {currentStepText}
             </p>
 
             {/* Progress Bar Container */}
             <div className="relative px-4">
               <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
                 <div
-                  className="h-full rounded-full progress-shimmer transition-all duration-300 ease-out shadow-lg shadow-purple-200"
-                  style={{ width: `${progress}%` }}
+                  className="h-full rounded-full progress-shimmer shadow-lg shadow-purple-200"
+                  style={{
+                    width: `${progress}%`,
+                    transition:
+                      progress >= 100
+                        ? "width 0.3s ease-out"
+                        : "none", // instant updates from rAF, smooth jump to 100%
+                  }}
                 ></div>
               </div>
               <p className="mt-4 text-xs font-bold tracking-widest text-gray-400 uppercase">
