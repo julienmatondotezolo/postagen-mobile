@@ -17,11 +17,20 @@ import path from "path";
  */
 
 const MEDIA_DIR = "/Users/emji/.openclaw/media/inbound";
+const TEST_IMG_DIR = "/Users/emji/.openclaw/workspace/test-images";
 
+// Real images from Mac mini + downloaded internet images (various sizes 53KB-906KB)
 const IMAGES = [
-  path.join(MEDIA_DIR, "file_10---da4d8208-5726-4473-b322-fa0c6c7d89f3.jpg"),
-  path.join(MEDIA_DIR, "file_8---b37bb151-149c-4b9b-b8c0-9dc0f743a6a4.jpg"),
-  path.join(MEDIA_DIR, "file_9---b2e046db-08af-4718-a55c-bd4261fb1e7a.jpg"),
+  path.join(TEST_IMG_DIR, "small-800x600.jpg"),       // 56 KB
+  path.join(TEST_IMG_DIR, "medium-1920x1080.jpg"),     // 53 KB
+  path.join(TEST_IMG_DIR, "large-3000x2000.jpg"),      // 906 KB
+  path.join(TEST_IMG_DIR, "xlarge-4000x3000.jpg"),     // 474 KB
+  path.join(TEST_IMG_DIR, "photo-1200x900.jpg"),       // 107 KB
+  path.join(TEST_IMG_DIR, "photo-1400x1000.jpg"),      // 159 KB
+  path.join(TEST_IMG_DIR, "photo-1600x1200.jpg"),      // 272 KB
+  path.join(TEST_IMG_DIR, "photo-1800x1200.jpg"),      // 221 KB
+  path.join(TEST_IMG_DIR, "photo-2000x1500.jpg"),      // 241 KB
+  path.join(TEST_IMG_DIR, "photo-2400x1600.jpg"),      // 312 KB
 ];
 
 const VIDEOS = [
@@ -149,24 +158,23 @@ async function verifyPlanPage(page: any, expectedCount: number) {
 }
 
 // ============================================================
-// SCENARIO 1: Upload multiple images (3)
+// SCENARIO 1: Upload multiple images (5 different sizes)
 // ============================================================
 test("Scenario 1: Upload multiple images", async ({ page }) => {
   test.setTimeout(180000);
   await clearIndexedDB(page);
   await setupBrand(page);
 
-  const count = await uploadFiles(page, IMAGES);
-  expect(count).toBe(3);
+  const testImages = IMAGES.slice(0, 5); // 5 images: 56KB to 474KB
+  const count = await uploadFiles(page, testImages);
+  expect(count).toBe(5);
 
-  // Verify counter shows 3
-  await expect(page.locator("text=3 / 100")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator("text=5 / 100")).toBeVisible({ timeout: 5000 });
 
-  // Generate plan
   const planUrl = await generateAndWaitForPlan(page);
   console.log(`✅ Scenario 1 PASS — Plan created: ${planUrl}`);
 
-  await verifyPlanPage(page, 3);
+  await verifyPlanPage(page, 5);
 });
 
 // ============================================================
@@ -252,4 +260,24 @@ test("Scenario 6: Upload 1 image and 1 video", async ({ page }) => {
   console.log(`✅ Scenario 6 PASS — Plan created: ${planUrl}`);
 
   await verifyPlanPage(page, 2);
+});
+
+// ============================================================
+// SCENARIO 7: STRESS TEST — 10 images (Monday demo simulation)
+// ============================================================
+test("Scenario 7: Upload 10 images (demo stress test)", async ({ page }) => {
+  test.setTimeout(300000); // 5 min timeout for 10 images
+  await clearIndexedDB(page);
+  await setupBrand(page);
+
+  // All 10 downloaded images (53KB to 906KB)
+  const count = await uploadFiles(page, IMAGES);
+  expect(count).toBe(10);
+
+  await expect(page.locator("text=10 / 100")).toBeVisible({ timeout: 5000 });
+
+  const planUrl = await generateAndWaitForPlan(page, 240000); // 4 min for GPT to process 10
+  console.log(`✅ Scenario 7 PASS — 10 IMAGES — Plan created: ${planUrl}`);
+
+  await verifyPlanPage(page, 10);
 });
