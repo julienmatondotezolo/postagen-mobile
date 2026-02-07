@@ -290,7 +290,7 @@ export default function CalendarPage() {
               >
                 {/* Thumbnail */}
                 {post.media ? (
-                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100 relative">
                     {post.media.type === "image" ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -298,6 +298,27 @@ export default function CalendarPage() {
                         alt=""
                         className="h-full w-full object-cover"
                       />
+                    ) : post.media.type === "video" && post.thumbnail ? (
+                      // Show video thumbnail
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={post.thumbnail}
+                          alt="Video thumbnail"
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/90">
+                            <svg
+                              className="h-3 w-3 text-gray-900 ml-0.5"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </>
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gray-100">
                         <svg

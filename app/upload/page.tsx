@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { saveMedia, getAllMedia, deleteMedia, getMediaUrl, type MediaFile } from "@/lib/db";
+import { saveMedia, getAllMedia, deleteMedia, getMediaUrl, clearAllMedia, type MediaFile } from "@/lib/db";
 import toast, { Toaster } from "react-hot-toast";
 
 /**
@@ -194,6 +194,13 @@ export default function MediaUpload() {
           } catch (error) {
             console.warn(`⚠️ Could not compress ${file.name}, using original`);
           }
+        }
+        
+        // For videos: warn about compatibility
+        if (file.type.startsWith("video/")) {
+          console.log(`🎥 Video detected: ${file.name} (${file.type})`);
+          // Videos are saved as-is - backend will extract frames for analysis
+          // Note: Browser playback requires compatible codecs (MP4/WebM work best)
         }
 
         // Check max limit
@@ -409,14 +416,20 @@ export default function MediaUpload() {
     
     setIsLoading(true);
     try {
-      toast.loading("Saving media to database...", { id: "saving" });
+      toast.loading("Preparing your media...", { id: "saving" });
       
-      // Save all temporary files to IndexedDB
+      // Clear old media BEFORE saving new ones
+      // This ensures only the new uploads are sent to backend
+      await clearAllMedia();
+      console.log("🗑️ Cleared old media from IndexedDB");
+      
+      // Save new media files to IndexedDB
       for (const file of temporaryFiles) {
         await saveMedia(file);
       }
       
-      toast.success("Media saved successfully!", { id: "saving" });
+      console.log(`💾 Saved ${temporaryFiles.length} new media file(s)`);
+      toast.success("Ready to generate!", { id: "saving", duration: 2000 });
       
       // Navigate to processing page
       router.push("/processing");

@@ -81,7 +81,7 @@ export default function IdentitySetup() {
 
       toast.success(
         `${data.businessName || "Merk"} succesvol geanalyseerd!`,
-        { duration: 3000 }
+        { duration: 2000 }
       );
     } catch (error) {
       console.error("Error analyzing brand:", error);

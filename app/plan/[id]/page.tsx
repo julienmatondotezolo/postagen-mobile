@@ -69,6 +69,8 @@ export default function VisualPlan() {
   const [showDeletePostModal, setShowDeletePostModal] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [isDeletingPost, setIsDeletingPost] = useState(false);
+  // Video playback state
+  const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set());
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -129,11 +131,33 @@ export default function VisualPlan() {
         getAllMedia(),
       ]);
 
+      console.log("📊 Debug - All media in IndexedDB:", allMedia.map(m => ({
+        id: m.id,
+        type: m.type,
+        mimeType: m.mimeType,
+        sizeKB: (m.base64.length / 1024).toFixed(0)
+      })));
+      
+      console.log("📝 Debug - All posts:", planPosts.map(p => ({
+        id: p.id,
+        mediaId: p.mediaId,
+        caption: p.caption.substring(0, 50)
+      })));
+
       const mediaMap = new Map(allMedia.map((m) => [m.id, m]));
-      const postsWithMedia = planPosts.map((post) => ({
-        ...post,
-        media: mediaMap.get(post.mediaId),
-      }));
+      const postsWithMedia = planPosts.map((post) => {
+        const media = mediaMap.get(post.mediaId);
+        if (!media) {
+          console.error(`❌ No media found for post ${post.id} (mediaId: ${post.mediaId})`);
+          console.error("   Available media IDs:", Array.from(mediaMap.keys()));
+        } else {
+          console.log(`✅ Loaded ${media.type} for post ${post.id} (mediaId: ${post.mediaId})`);
+        }
+        return {
+          ...post,
+          media,
+        };
+      });
 
       setPosts(postsWithMedia);
     } catch (error) {
@@ -469,8 +493,8 @@ export default function VisualPlan() {
                       </button>
                     </div>
 
-                    {/* Image */}
-                    {post.media && (
+                    {/* Image/Video */}
+                    {post.media ? (
                       <div className="relative mx-4 mt-4 aspect-4/3 overflow-hidden rounded-[32px] bg-gray-50 group">
                         {post.media.type === "image" ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -479,27 +503,66 @@ export default function VisualPlan() {
                             alt="Post"
                             className="h-full w-full object-cover"
                           />
-                        ) : (
-                          <div className="relative h-full w-full">
-                            <video
-                              src={getMediaUrl(post.media)}
-                              className="h-full w-full object-cover"
-                              preload="metadata"
-                              muted
-                              playsInline
-                            />
-                            {/* Video Play Icon Overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/10 pointer-events-none">
-                              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm shadow-lg">
-                                <svg
-                                  className="h-7 w-7 text-gray-900 ml-0.5"
-                                  fill="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path d="M8 5v14l11-7z" />
-                                </svg>
+                        ) : post.media.type === "video" ? (
+                          <div className="relative h-full w-full bg-black">
+                            {playingVideos.has(post.id) ? (
+                              // Video player
+                              <video
+                                src={getMediaUrl(post.media)}
+                                className="h-full w-full object-cover rounded-[32px]"
+                                controls
+                                autoPlay
+                                preload="metadata"
+                                playsInline
+                                onError={(e) => {
+                                  console.error('❌ Video playback error:', {
+                                    mediaId: post.media?.id,
+                                    mimeType: post.media?.mimeType,
+                                    errorCode: e.currentTarget.error?.code,
+                                    errorMsg: e.currentTarget.error?.message
+                                  });
+                                }}
+                                onLoadedMetadata={() => {
+                                  console.log('✅ Video playing:', post.media?.id);
+                                }}
+                              />
+                            ) : (
+                              // Show thumbnail with play button
+                              <div 
+                                className="relative h-full w-full cursor-pointer"
+                                onClick={() => {
+                                  setPlayingVideos(prev => new Set([...prev, post.id]));
+                                }}
+                              >
+                                {post.thumbnail ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={post.thumbnail}
+                                    alt="Video thumbnail"
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="h-full w-full bg-gray-900 flex items-center justify-center">
+                                    <p className="text-white text-sm">Video</p>
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors">
+                                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/95 backdrop-blur-sm shadow-2xl group-hover:scale-110 transition-transform">
+                                    <svg
+                                      className="h-8 w-8 text-gray-900 ml-0.5"
+                                      fill="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <p className="text-gray-500">Unknown media type: {post.media.type}</p>
                           </div>
                         )}
                         <div className="absolute bottom-6 left-6 right-6 flex gap-3">
@@ -544,6 +607,16 @@ export default function VisualPlan() {
                             </svg>
                             {isEditingThis ? "Save" : "Edit"}
                           </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative mx-4 mt-4 aspect-4/3 overflow-hidden rounded-[32px] bg-red-50 border-2 border-red-200 flex items-center justify-center">
+                        <div className="text-center p-6">
+                          <svg className="h-12 w-12 mx-auto mb-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <p className="text-sm font-bold text-red-600">Media niet gevonden</p>
+                          <p className="text-xs text-red-500 mt-1">ID: {post.mediaId}</p>
                         </div>
                       </div>
                     )}

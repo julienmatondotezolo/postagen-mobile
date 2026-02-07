@@ -11,6 +11,7 @@ export default function PostDetail() {
   const [post, setPost] = useState<(Post & { media?: MediaFile }) | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCaption, setEditedCaption] = useState("");
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   const loadPost = async () => {
     try {
@@ -132,15 +133,64 @@ export default function PostDetail() {
                     alt="Post"
                     className="h-full w-full object-cover"
                   />
+                ) : post.media.type === "video" ? (
+                  <div className="relative h-full w-full bg-black">
+                    {isVideoPlaying ? (
+                      // Video player
+                      <video
+                        src={getMediaUrl(post.media)}
+                        className="h-full w-full object-cover"
+                        controls
+                        autoPlay
+                        playsInline
+                        preload="metadata"
+                        onError={(e) => {
+                          console.error('❌ Video playback error:', {
+                            mediaId: post.media?.id,
+                            mimeType: post.media?.mimeType,
+                            errorCode: e.currentTarget.error?.code,
+                            errorMsg: e.currentTarget.error?.message
+                          });
+                        }}
+                        onLoadedMetadata={() => {
+                          console.log('✅ Video loaded:', post.media?.id);
+                        }}
+                      />
+                    ) : (
+                      // Show thumbnail with play button
+                      <div 
+                        className="relative h-full w-full cursor-pointer"
+                        onClick={() => setIsVideoPlaying(true)}
+                      >
+                        {post.thumbnail ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={post.thumbnail}
+                            alt="Video preview"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-full w-full bg-gray-900 flex items-center justify-center">
+                            <p className="text-white text-sm">Video</p>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center hover:bg-black/40 transition-colors">
+                          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/95 backdrop-blur-sm shadow-2xl hover:scale-110 transition-transform">
+                            <svg
+                              className="h-10 w-10 text-gray-900 ml-1"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className="relative h-full w-full">
-                    <video
-                      src={getMediaUrl(post.media)}
-                      className="h-full w-full object-cover"
-                      controls
-                      playsInline
-                      preload="metadata"
-                    />
+                  <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                    <p className="text-gray-400">Unknown media type</p>
                   </div>
                 )}
                 {post.isOptimized && (

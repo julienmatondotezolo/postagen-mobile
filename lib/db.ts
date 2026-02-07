@@ -27,6 +27,7 @@ export interface Post {
   sentiment: "Very Positive" | "Positive" | "Neutral" | "Negative";
   isOptimized: boolean;
   createdAt: number;
+  thumbnail?: string; // For videos: extracted frame as thumbnail (browsers can't play all video codecs)
 }
 
 export interface Plan {
@@ -116,15 +117,42 @@ async function fileToBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
+      
+      // Validate the result
+      if (!result || result.length === 0) {
+        reject(new Error(`Failed to convert ${file.name} to base64: empty result`));
+        return;
+      }
+      
+      // Check if it's a valid data URL
+      if (!result.startsWith('data:')) {
+        reject(new Error(`Failed to convert ${file.name} to base64: invalid data URL`));
+        return;
+      }
+      
+      console.log(`✅ Converted ${file.name} to base64: ${(result.length / 1024 / 1024).toFixed(2)}MB`);
       resolve(result);
     };
-    reader.onerror = reject;
+    reader.onerror = (error) => {
+      console.error(`❌ Error reading ${file.name}:`, error);
+      reject(error);
+    };
     reader.readAsDataURL(file);
   });
 }
 
 // Helper function to get data URL from base64
 export function getMediaUrl(mediaFile: MediaFile): string {
+  if (!mediaFile.base64 || mediaFile.base64.length === 0) {
+    console.error('❌ Empty base64 for media:', mediaFile.id);
+    return '';
+  }
+  
+  if (!mediaFile.base64.startsWith('data:')) {
+    console.error('❌ Invalid base64 format for media:', mediaFile.id);
+    return '';
+  }
+  
   return mediaFile.base64;
 }
 
@@ -132,6 +160,9 @@ export function getMediaUrl(mediaFile: MediaFile): string {
 export async function saveMedia(file: File): Promise<MediaFile> {
   const db = await getDB();
   const id = `media-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  console.log(`💾 Saving ${file.type} to IndexedDB: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+  
   const base64 = await fileToBase64(file);
   const type = file.type.startsWith("video/") ? "video" : "image";
 
@@ -144,7 +175,36 @@ export async function saveMedia(file: File): Promise<MediaFile> {
   };
 
   await db.put("media", mediaFile);
+  
+  // Verify it was saved correctly
+  const saved = await db.get("media", id);
+  if (!saved || !saved.base64 || saved.base64.length === 0) {
+    throw new Error(`Failed to save ${file.name} to IndexedDB`);
+  }
+  
+  console.log(`✅ Saved to IndexedDB: ${id} (${saved.type}, ${(saved.base64.length / 1024 / 1024).toFixed(2)}MB)`);
+  
   return mediaFile;
+}
+
+// Update existing media (used for replacing videos with converted MP4s)
+export async function updateMedia(mediaFile: Omit<MediaFile, 'uploadedAt'>): Promise<void> {
+  const db = await getDB();
+  
+  console.log(`🔄 Updating media in IndexedDB: ${mediaFile.id} (${mediaFile.mimeType})`);
+  
+  // Get existing media to preserve uploadedAt
+  const existing = await db.get("media", mediaFile.id);
+  const uploadedAt = existing?.uploadedAt || Date.now();
+  
+  const updatedMedia: MediaFile = {
+    ...mediaFile,
+    uploadedAt,
+  };
+  
+  await db.put("media", updatedMedia);
+  
+  console.log(`✅ Updated media ${mediaFile.id} in IndexedDB (${(mediaFile.base64.length / 1024 / 1024).toFixed(2)}MB)`);
 }
 
 export async function getAllMedia(): Promise<MediaFile[]> {

@@ -2,11 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
   getAllMedia,
   getBrandIdentity,
   savePost,
   createPlan,
+  updateMedia,
   type Post,
 } from "@/lib/db";
 import { API_BASE_URL } from "@/lib/config";
@@ -31,12 +33,21 @@ interface GenerateResponsePost {
   sentiment: "Very Positive" | "Positive" | "Neutral" | "Negative";
   isOptimized: boolean;
   createdAt: number;
+  thumbnail?: string; // For videos: extracted frame as thumbnail
+}
+
+interface ConvertedVideo {
+  id: string;
+  base64: string;
+  mimeType: string;
+  type: "video";
 }
 
 interface GenerateResponse {
   posts: GenerateResponsePost[];
   planName: string;
   planDescription: string;
+  convertedVideos?: ConvertedVideo[];
 }
 
 const API_TIMEOUT_MS = 120_000; // 120 seconds — GPT Vision can be slow with 10+ images
@@ -77,9 +88,6 @@ export default function Processing() {
   const router = useRouter();
   const [progress, setProgress] = useState(0);
   const [currentStepText, setCurrentStepText] = useState(ANALYSIS_STEPS[0].text);
-  const [hasGenerated, setHasGenerated] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const isMountedRef = useRef(true);
   const apiDoneRef = useRef(false);
   const animFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -114,31 +122,25 @@ export default function Processing() {
     animFrameRef.current = requestAnimationFrame(tick);
   }, []);
 
-  useEffect(() => {
-    if (hasGenerated) return;
-    setHasGenerated(true);
-    isMountedRef.current = true;
+  // TanStack Query mutation - automatically prevents duplicate requests
+  const mutation = useMutation({
+    mutationFn: async () => {
+      
+      const mediaFiles = await getAllMedia();
+      if (mediaFiles.length === 0) {
+        router.push("/upload");
+        throw new Error("No media files");
+      }
 
-    const generatePlan = async () => {
-      try {
-        const mediaFiles = await getAllMedia();
-        if (mediaFiles.length === 0) {
-          router.push("/upload");
-          return;
-        }
+      imageCountRef.current = mediaFiles.length;
+      startTimeRef.current = Date.now();
+      apiDoneRef.current = false;
 
-        // Bail out if the component already unmounted (React 18 strict mode)
-        if (!isMountedRef.current) return;
+      // Start the smooth progress animation
+      runProgressAnimation();
 
-        imageCountRef.current = mediaFiles.length;
-        startTimeRef.current = Date.now();
-        apiDoneRef.current = false;
-
-        // Start the smooth progress animation
-        runProgressAnimation();
-
-        // --- Fetch brand identity from IndexedDB ---
-        const brandIdentity = await getBrandIdentity();
+      // --- Fetch brand identity from IndexedDB ---
+      const brandIdentity = await getBrandIdentity();
 
         // --- Build FormData (multipart/form-data) ---
         const formData = new FormData();
@@ -160,58 +162,20 @@ export default function Processing() {
           formData.append("files", blob, filename);
         }
 
-        // --- API call with timeout ---
-        // Create AbortController INSIDE the async function (not in useEffect scope)
-        // to avoid React 18 strict mode cleanup aborting the fetch immediately.
-        const controller = new AbortController();
+      // --- API call with timeout ---
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-        const timeoutId = setTimeout(() => {
-          controller.abort();
-        }, API_TIMEOUT_MS);
-
-        let response: Response;
-        try {
-          response = await fetch(`${API_BASE_URL}/api/generate`, {
-            method: "POST",
-            // DO NOT set Content-Type — browser sets multipart boundary automatically
-            body: formData,
-            signal: controller.signal,
-          });
-        } catch (fetchError: unknown) {
-          clearTimeout(timeoutId);
-          apiDoneRef.current = true;
-          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-
-          // If component unmounted, don't update state
-          if (!isMountedRef.current) return;
-
-          if (
-            fetchError instanceof DOMException &&
-            fetchError.name === "AbortError"
-          ) {
-            toast.error(
-              "De verwerking duurde te lang. Probeer het opnieuw met minder foto's.",
-              { duration: 6000 }
-            );
-          } else {
-            toast.error(
-              "Kan geen verbinding maken met de server. Controleer je internetverbinding.",
-              { duration: 6000 }
-            );
-          }
-          setHasError(true);
-          return;
-        }
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/generate`, {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
 
         clearTimeout(timeoutId);
 
-        // If component unmounted, don't process response
-        if (!isMountedRef.current) return;
-
         if (!response.ok) {
-          apiDoneRef.current = true;
-          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-
           const errorText = await response.text().catch(() => "");
           console.error(`API error ${response.status}: ${errorText}`);
 
@@ -225,26 +189,14 @@ export default function Processing() {
           } else {
             errorMessage = `Er ging iets mis bij het genereren (${response.status}). Probeer het opnieuw.`;
           }
-
-          toast.error(errorMessage, { duration: 6000 });
-          setHasError(true);
-          return;
+          throw new Error(errorMessage);
         }
 
         const data: GenerateResponse = await response.json();
 
-        if (!isMountedRef.current) return;
-
         // --- Validate response ---
         if (!data.posts || data.posts.length === 0) {
-          apiDoneRef.current = true;
-          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-          toast.error(
-            "De AI heeft geen posts kunnen genereren. Probeer het opnieuw.",
-            { duration: 6000 }
-          );
-          setHasError(true);
-          return;
+          throw new Error("De AI heeft geen posts kunnen genereren. Probeer het opnieuw.");
         }
 
         // --- IMMEDIATELY jump to 100% ---
@@ -252,6 +204,22 @@ export default function Processing() {
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
         setProgress(100);
         setCurrentStepText("Done! Preparing your plan...");
+
+        // --- Update IndexedDB with converted MP4 videos ---
+        if (data.convertedVideos && data.convertedVideos.length > 0) {
+          for (const video of data.convertedVideos) {
+            try {
+              await updateMedia({
+                id: video.id,
+                base64: video.base64,
+                mimeType: video.mimeType,
+                type: video.type,
+              });
+            } catch (err) {
+              console.error(`❌ Failed to update video ${video.id}:`, err);
+            }
+          }
+        }
 
         // --- Save posts to IndexedDB ---
         for (const post of data.posts) {
@@ -266,6 +234,7 @@ export default function Processing() {
             sentiment: post.sentiment,
             isOptimized: post.isOptimized,
             createdAt: post.createdAt,
+            thumbnail: post.thumbnail,
           };
           await savePost(validPost);
         }
@@ -281,43 +250,54 @@ export default function Processing() {
           "Draft"
         );
 
-        if (!isMountedRef.current) return;
-
-        // --- Navigate to plan view after brief delay ---
-        setTimeout(() => {
-          router.push(`/plan/${newPlan.id}`);
-        }, 800);
-      } catch (error) {
-        console.error("Error generating plan:", error);
+        return newPlan;
+      } catch (fetchError: unknown) {
+        clearTimeout(timeoutId);
         apiDoneRef.current = true;
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
 
-        if (!isMountedRef.current) return;
-
-        toast.error(
-          "Er is een onverwachte fout opgetreden. Probeer het opnieuw.",
-          { duration: 6000 }
-        );
-        setHasError(true);
+        if (
+          fetchError instanceof DOMException &&
+          fetchError.name === "AbortError"
+        ) {
+          throw new Error(
+            "De verwerking duurde te lang. Probeer het opnieuw met minder foto's."
+          );
+        }
+        throw fetchError;
       }
-    };
+    },
+    onSuccess: (newPlan) => {
+      setTimeout(() => {
+        router.push(`/plan/${newPlan.id}`);
+      }, 800);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Er is een onverwachte fout opgetreden.", {
+        duration: 6000,
+      });
+    },
+  });
 
-    generatePlan();
-
-    return () => {
-      // Mark unmounted — do NOT abort the controller here (React 18 strict mode fix)
-      isMountedRef.current = false;
-      apiDoneRef.current = true;
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
+  // Trigger mutation on mount
+  useEffect(() => {
+    mutation.mutate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      apiDoneRef.current = true;
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, []);
+
   const handleRetry = () => {
-    setHasError(false);
-    setHasGenerated(false);
+    mutation.reset();
     setProgress(0);
     setCurrentStepText(ANALYSIS_STEPS[0].text);
+    mutation.mutate();
   };
 
   return (
@@ -329,7 +309,7 @@ export default function Processing() {
             <div className="absolute inset-0 animate-pulse rounded-full bg-purple-200/40 blur-3xl scale-150"></div>
             <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-2xl shadow-purple-100">
               <div className="flex items-center justify-center gap-1">
-                {hasError ? (
+                {mutation.isError ? (
                   <svg
                     className="h-10 w-10 text-red-500"
                     fill="none"
@@ -364,7 +344,7 @@ export default function Processing() {
         </div>
 
         {/* Title */}
-        {hasError ? (
+        {mutation.isError ? (
           <>
             <h1 className="mb-6 text-4xl font-bold text-gray-900">Oeps!</h1>
             <h2 className="mb-6 text-2xl font-serif italic font-normal text-red-500">
