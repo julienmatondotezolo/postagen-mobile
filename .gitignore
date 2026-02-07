@@ -3,3 +3,4 @@ package-lock.json
 .next
 .env.local
 tsconfig.tsbuildinfo
+.DS_Store
