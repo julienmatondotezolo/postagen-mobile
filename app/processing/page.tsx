@@ -92,6 +92,7 @@ export default function Processing() {
   const animFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const imageCountRef = useRef<number>(1);
+  const hasMutatedRef = useRef(false); // Prevent double-trigger from React 18 Strict Mode
 
   /**
    * Exponential-decay progress animation.
@@ -279,8 +280,10 @@ export default function Processing() {
     },
   });
 
-  // Trigger mutation on mount
+  // Trigger mutation on mount — ONCE only (React 18 Strict Mode calls useEffect twice)
   useEffect(() => {
+    if (hasMutatedRef.current) return;
+    hasMutatedRef.current = true;
     mutation.mutate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -297,6 +300,8 @@ export default function Processing() {
     mutation.reset();
     setProgress(0);
     setCurrentStepText(ANALYSIS_STEPS[0].text);
+    hasMutatedRef.current = false; // Allow retry
+    hasMutatedRef.current = true;  // Mark as triggered
     mutation.mutate();
   };
 
