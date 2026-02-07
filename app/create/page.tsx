@@ -6,6 +6,7 @@ import { saveBrandIdentity, getBrandIdentity } from "@/lib/db";
 import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { useI18n } from "@/lib/i18n";
 
 interface AnalyzeBrandResponse {
   businessName: string;
@@ -15,6 +16,7 @@ interface AnalyzeBrandResponse {
 }
 
 export default function IdentitySetup() {
+  const { t } = useI18n();
   const router = useRouter();
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [description, setDescription] = useState("");
@@ -47,7 +49,7 @@ export default function IdentitySetup() {
    */
   const handleAnalyzeUrl = async () => {
     if (!websiteUrl.trim() && !description.trim()) {
-      toast.error("Voer een website-URL of beschrijving in om te analyseren.");
+      toast.error(t("create.noInput"));
       return;
     }
 
@@ -68,7 +70,7 @@ export default function IdentitySetup() {
         const errorData = await res.json().catch(() => null);
         const msg =
           errorData?.message ||
-          "Kon de website niet analyseren. Controleer de URL of beschrijf je merk handmatig.";
+          t("create.analyzeError");
         toast.error(msg, { duration: 5000 });
         return;
       }
@@ -80,18 +82,18 @@ export default function IdentitySetup() {
       if (data.description) setDescription(data.description);
 
       toast.success(
-        `${data.businessName || "Merk"} succesvol geanalyseerd!`,
+        `${data.businessName || ""} ${t("create.analyzeSuccess")}`,
         { duration: 2000 }
       );
     } catch (error) {
       console.error("Error analyzing brand:", error);
       if (error instanceof DOMException && error.name === "AbortError") {
-        toast.error("De analyse duurde te lang. Probeer het opnieuw.", {
+        toast.error(t("create.analyzeTimeout"), {
           duration: 5000,
         });
       } else {
         toast.error(
-          "Kon geen verbinding maken met de server. Beschrijf je merk handmatig.",
+          t("create.serverError"),
           { duration: 5000 }
         );
       }
@@ -120,7 +122,7 @@ export default function IdentitySetup() {
       router.push("/upload");
     } catch (error) {
       console.error("Error saving brand identity:", error);
-      toast.error("Kon merkidentiteit niet opslaan. Probeer het opnieuw.");
+      toast.error(t("create.saveError"));
     } finally {
       setIsSaving(false);
     }
@@ -154,7 +156,7 @@ export default function IdentitySetup() {
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-purple-500"></div>
             <span className="text-sm font-medium text-purple-600">
-              STEP 1 OF 4
+              {t("create.step1")}
             </span>
           </div>
         </div>
@@ -174,21 +176,17 @@ export default function IdentitySetup() {
         {/* Main Heading */}
         <div className="mb-8">
           <h1 className="mb-4 text-4xl font-bold leading-tight text-gray-900">
-            Establish your{" "}
-            <span className="font-serif italic font-normal text-violet-600">
-              brand identity
-            </span>
+            {t("create.brandIdentity")}
           </h1>
           <p className="text-base leading-relaxed text-gray-600">
-            Let&apos;s sync your digital presence to create content that sounds
-            like you.
+            {t("create.subtitle")}
           </p>
         </div>
 
         {/* Website Input + Analyze Button */}
         <div className="mb-6">
           <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Website or Socials
+            {t("create.websiteLabel")}
           </label>
           <div className="relative">
             <div className="absolute left-4 top-1/2 -translate-y-1/2">
@@ -211,7 +209,7 @@ export default function IdentitySetup() {
               value={websiteUrl}
               onChange={(e) => setWebsiteUrl(e.target.value)}
               placeholder={
-                isLoadingExisting ? "Laden..." : "Paste your link here..."
+                isLoadingExisting ? t("common.loading") : t("create.websitePlaceholder")
               }
               disabled={isLoadingExisting || isAnalyzing}
               className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-12 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
@@ -247,7 +245,7 @@ export default function IdentitySetup() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  <span>Analyzing...</span>
+                  <span>{t("create.analyzing")}</span>
                 </>
               ) : (
                 <>
@@ -264,7 +262,7 @@ export default function IdentitySetup() {
                       d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                   </svg>
-                  <span>Analyze my brand</span>
+                  <span>{t("create.analyzeBtn")}</span>
                 </>
               )}
             </button>
@@ -277,22 +275,22 @@ export default function IdentitySetup() {
             <div className="w-full border-t border-gray-200"></div>
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-white px-4 text-sm text-gray-400">OR</span>
+            <span className="bg-white px-4 text-sm text-gray-400">{t("common.or")}</span>
           </div>
         </div>
 
         {/* Description Input */}
         <div className="mb-8">
           <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Description
+            {t("create.descLabel")}
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={
               isLoadingExisting
-                ? "Laden..."
-                : "Tell us about your business, values, and audience"
+                ? t("common.loading")
+                : t("create.descPlaceholder")
             }
             disabled={isLoadingExisting}
             rows={6}
@@ -328,7 +326,7 @@ export default function IdentitySetup() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  <span>Analyzing...</span>
+                  <span>{t("create.analyzing")}</span>
                 </>
               ) : (
                 <>
@@ -345,7 +343,7 @@ export default function IdentitySetup() {
                       d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
                     />
                   </svg>
-                  <span>Analyze my brand</span>
+                  <span>{t("create.analyzeBtn")}</span>
                 </>
               )}
             </button>
@@ -380,11 +378,11 @@ export default function IdentitySetup() {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              <span>Saving...</span>
+              <span>{t("common.save")}...</span>
             </>
           ) : (
             <>
-              <span>Continue</span>
+              <span>{t("create.continueBtn")}</span>
               <svg
                 className="h-5 w-5"
                 fill="none"

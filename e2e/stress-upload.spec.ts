@@ -18,7 +18,7 @@ const TEST_MEDIA_DIR = "/Users/emji/.openclaw/workspace/test-media";
 const TEST_IMG_DIR = "/Users/emji/.openclaw/workspace/test-images";
 const INBOUND_DIR = "/Users/emji/.openclaw/media/inbound";
 const BASE_URL = "http://localhost:3000";
-const API_URL = "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // ===== Test media files (downloaded to test-media/) =====
 const MEDIA = {

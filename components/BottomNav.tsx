@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
 
 interface NavItem {
   label: string;
@@ -12,6 +13,7 @@ interface NavItem {
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useI18n();
 
   // Hide nav on wizard flow pages and processing
   if (pathname.startsWith("/create") || pathname === "/upload" || pathname === "/processing") {
@@ -20,7 +22,7 @@ export default function BottomNav() {
 
   const navItems: NavItem[] = [
     {
-      label: "Home",
+      label: t("nav.home"),
       path: "/home",
       icon: (active: boolean) => (
         <svg
@@ -43,7 +45,7 @@ export default function BottomNav() {
       ),
     },
     {
-      label: "Calendar",
+      label: t("nav.calendar"),
       path: "/calendar",
       icon: (active: boolean) => (
         <svg
@@ -82,7 +84,7 @@ export default function BottomNav() {
       isCentral: true,
     },
     {
-      label: "Growth",
+      label: t("nav.growth"),
       path: "/growth",
       icon: (active: boolean) => (
         <svg
@@ -101,7 +103,7 @@ export default function BottomNav() {
       ),
     },
     {
-      label: "Profile",
+      label: t("nav.profile"),
       path: "/profile",
       icon: (active: boolean) => (
         <svg

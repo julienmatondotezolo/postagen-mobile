@@ -13,14 +13,17 @@ import {
 } from "@/lib/db";
 import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
+import { useI18n } from "@/lib/i18n";
 
-const ANALYSIS_STEPS = [
-  { text: "Received images, starting analysis...", threshold: 10 },
-  { text: "Analyzing your images with AI...", threshold: 30 },
-  { text: "Generating captions...", threshold: 50 },
-  { text: "Optimizing schedule...", threshold: 70 },
-  { text: "Finalizing your plan...", threshold: 90 },
-];
+function getAnalysisSteps(t: (key: string) => string) {
+  return [
+    { text: t("processing.step1"), threshold: 10 },
+    { text: t("processing.step2"), threshold: 30 },
+    { text: t("processing.step3"), threshold: 50 },
+    { text: t("processing.step4"), threshold: 70 },
+    { text: t("processing.step5"), threshold: 90 },
+  ];
+}
 
 interface GenerateResponsePost {
   id: string;
@@ -85,7 +88,9 @@ function extFromMime(mime: string): string {
 }
 
 export default function Processing() {
+  const { t } = useI18n();
   const router = useRouter();
+  const ANALYSIS_STEPS = getAnalysisSteps(t);
   const [progress, setProgress] = useState(0);
   const [currentStepText, setCurrentStepText] = useState(ANALYSIS_STEPS[0].text);
   const apiDoneRef = useRef(false);
@@ -98,6 +103,7 @@ export default function Processing() {
    * Exponential-decay progress animation.
    */
   const runProgressAnimation = useCallback(() => {
+    const steps = getAnalysisSteps(t);
     const tick = () => {
       if (apiDoneRef.current) return;
 
@@ -110,9 +116,9 @@ export default function Processing() {
 
       setProgress(newProgress);
 
-      for (let i = ANALYSIS_STEPS.length - 1; i >= 0; i--) {
-        if (newProgress >= ANALYSIS_STEPS[i].threshold) {
-          setCurrentStepText(ANALYSIS_STEPS[i].text);
+      for (let i = steps.length - 1; i >= 0; i--) {
+        if (newProgress >= steps[i].threshold) {
+          setCurrentStepText(steps[i].text);
           break;
         }
       }
@@ -121,7 +127,7 @@ export default function Processing() {
     };
 
     animFrameRef.current = requestAnimationFrame(tick);
-  }, []);
+  }, [t]);
 
   // TanStack Query mutation - automatically prevents duplicate requests
   const mutation = useMutation({
@@ -182,13 +188,11 @@ export default function Processing() {
 
           let errorMessage: string;
           if (response.status === 413) {
-            errorMessage =
-              "De upload is te groot. Probeer minder of kleinere bestanden te uploaden.";
+            errorMessage = t("processing.tooLarge");
           } else if (response.status === 400) {
-            errorMessage =
-              "Geen geldige media gevonden. Upload minstens één foto of video.";
+            errorMessage = t("processing.noMedia");
           } else {
-            errorMessage = `Er ging iets mis bij het genereren (${response.status}). Probeer het opnieuw.`;
+            errorMessage = `${t("processing.error")} (${response.status})`;
           }
           throw new Error(errorMessage);
         }
@@ -197,14 +201,14 @@ export default function Processing() {
 
         // --- Validate response ---
         if (!data.posts || data.posts.length === 0) {
-          throw new Error("De AI heeft geen posts kunnen genereren. Probeer het opnieuw.");
+          throw new Error(t("processing.noResults"));
         }
 
         // --- IMMEDIATELY jump to 100% ---
         apiDoneRef.current = true;
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
         setProgress(100);
-        setCurrentStepText("Done! Preparing your plan...");
+        setCurrentStepText(t("processing.done"));
 
         // --- Update IndexedDB with converted MP4 videos ---
         if (data.convertedVideos && data.convertedVideos.length > 0) {
@@ -261,9 +265,7 @@ export default function Processing() {
           fetchError instanceof DOMException &&
           fetchError.name === "AbortError"
         ) {
-          throw new Error(
-            "De verwerking duurde te lang. Probeer het opnieuw met minder foto's."
-          );
+          throw new Error(t("processing.timeout"));
         }
         throw fetchError;
       }
@@ -274,7 +276,7 @@ export default function Processing() {
       }, 800);
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Er is een onverwachte fout opgetreden.", {
+      toast.error(error.message || t("processing.error"), {
         duration: 6000,
       });
     },
@@ -299,7 +301,7 @@ export default function Processing() {
   const handleRetry = () => {
     mutation.reset();
     setProgress(0);
-    setCurrentStepText(ANALYSIS_STEPS[0].text);
+    setCurrentStepText(getAnalysisSteps(t)[0].text);
     hasMutatedRef.current = false; // Allow retry
     hasMutatedRef.current = true;  // Mark as triggered
     mutation.mutate();
@@ -362,17 +364,14 @@ export default function Processing() {
               onClick={handleRetry}
               className="rounded-2xl bg-[#8B5CF6] px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-200 transition-all hover:bg-purple-600 hover:shadow-2xl hover:shadow-purple-300 hover:-translate-y-0.5 active:scale-[0.98]"
             >
-              Opnieuw proberen
+              {t("common.retry")}
             </button>
           </>
         ) : (
           <>
             <h1 className="mb-6 text-4xl font-bold text-gray-900">
-              AI Analysis
+              {t("processing.title")}
             </h1>
-            <h2 className="mb-6 text-4xl font-serif italic font-normal text-violet-600">
-              in Progress
-            </h2>
 
             {/* Current Step */}
             <p className="mb-16 text-base text-gray-600 font-medium">

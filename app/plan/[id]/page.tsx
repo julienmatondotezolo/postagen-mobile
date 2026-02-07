@@ -16,6 +16,7 @@ import {
   type Plan,
 } from "@/lib/db";
 import toast from "react-hot-toast";
+import { useI18n } from "@/lib/i18n";
 
 // Generate 7 days starting from today
 const generateDays = () => {
@@ -48,6 +49,7 @@ const generateDays = () => {
 };
 
 export default function VisualPlan() {
+  const { t } = useI18n();
   const router = useRouter();
   const params = useParams();
   const planId = params.id as string;
@@ -179,11 +181,11 @@ export default function VisualPlan() {
     setIsDeleting(true);
     try {
       await deletePlan(plan.id);
-      toast.success("Plan deleted");
+      toast.success(t("home.planDeleted"));
       router.push("/home");
     } catch (error) {
       console.error("Error deleting plan:", error);
-      toast.error("Failed to delete plan");
+      toast.error(t("home.deleteError"));
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -200,13 +202,13 @@ export default function VisualPlan() {
     if (!editingPostId) return;
     try {
       await updatePost(editingPostId, { caption: editedCaption });
-      toast.success("Post updated");
+      toast.success(t("common.save"));
       setEditingPostId(null);
       setEditedCaption("");
       await loadPlan(); // Reload to reflect changes
     } catch (error) {
       console.error("Error updating post:", error);
-      toast.error("Failed to update post");
+      toast.error(t("processing.error"));
     }
   };
 
@@ -232,13 +234,13 @@ export default function VisualPlan() {
       const newPostIds = plan.postIds.filter((id) => id !== postToDelete);
       await updatePlan(plan.id, { postIds: newPostIds });
 
-      toast.success("Post deleted");
+      toast.success(t("common.delete"));
       setShowDeletePostModal(false);
       setPostToDelete(null);
       await loadPlan(); // Reload to reflect changes
     } catch (error) {
       console.error("Error deleting post:", error);
-      toast.error("Failed to delete post");
+      toast.error(t("processing.error"));
     } finally {
       setIsDeletingPost(false);
     }
@@ -316,17 +318,10 @@ export default function VisualPlan() {
               </button>
             </div>
             <p className="mb-1 text-sm font-medium text-gray-500">
-              {plan?.description || "Weekly Strategy"}
+              {plan?.description || ""}
             </p>
             <h1 className="text-4xl font-bold text-gray-900">
-              {plan?.name || (
-                <span>
-                  Visual{" "}
-                  <span className="font-serif italic font-normal text-violet-600">
-                    Plan
-                  </span>
-                </span>
-              )}
+              {plan?.name || t("plan.title")}
             </h1>
           </div>
 
@@ -444,12 +439,12 @@ export default function VisualPlan() {
           <div className="space-y-6">
             {posts.length === 0 ? (
               <div className="py-12 text-center">
-                <p className="mb-4 text-gray-500">No posts yet</p>
+                <p className="mb-4 text-gray-500">{t("plan.noPosts")}</p>
               </div>
             ) : filteredPosts.length === 0 ? (
               <div className="py-12 text-center bg-white/40 backdrop-blur-sm rounded-[40px] border border-white">
                 <p className="text-gray-400 font-medium">
-                  No posts scheduled for this day
+                  {t("plan.noPosts")}
                 </p>
               </div>
             ) : (
@@ -605,7 +600,7 @@ export default function VisualPlan() {
                                 d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                               />
                             </svg>
-                            {isEditingThis ? "Save" : "Edit"}
+                            {isEditingThis ? t("common.save") : t("plan.edit")}
                           </button>
                         </div>
                       </div>
@@ -636,13 +631,13 @@ export default function VisualPlan() {
                               onClick={handleCancelEdit}
                               className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
                             >
-                              Cancel
+                              {t("common.cancel")}
                             </button>
                             <button
                               onClick={handleSaveEdit}
                               className="flex-1 rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 transition-all"
                             >
-                              Save
+                              {t("common.save")}
                             </button>
                           </div>
                         </div>
@@ -688,18 +683,10 @@ export default function VisualPlan() {
             </div>
 
             <h3 className="mb-2 text-center text-xl font-bold text-gray-900">
-              Delete Plan?
+              {t("home.deletePlan")}?
             </h3>
             <p className="mb-6 text-center text-sm text-gray-500">
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-gray-700">
-                &ldquo;{plan.name}&rdquo;
-              </span>
-              ? This will permanently remove{" "}
-              <span className="font-semibold text-red-500">
-                {plan.postIds.length} posts
-              </span>
-              .
+              {t("home.deleteConfirm")}
             </p>
 
             <div className="flex gap-3">
@@ -708,7 +695,7 @@ export default function VisualPlan() {
                 disabled={isDeleting}
                 className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-50"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleDeletePlan}
@@ -739,7 +726,7 @@ export default function VisualPlan() {
                     Deleting...
                   </>
                 ) : (
-                  "Delete"
+                  t("common.delete")
                 )}
               </button>
             </div>
@@ -770,10 +757,10 @@ export default function VisualPlan() {
             </div>
 
             <h3 className="mb-2 text-center text-xl font-bold text-gray-900">
-              Delete Post?
+              {t("common.delete")}?
             </h3>
             <p className="mb-6 text-center text-sm text-gray-500">
-              Are you sure you want to delete this post? This action cannot be undone.
+              {t("home.deleteConfirm")}
             </p>
 
             <div className="flex gap-3">
@@ -785,7 +772,7 @@ export default function VisualPlan() {
                 disabled={isDeletingPost}
                 className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-50"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleDeletePost}
@@ -816,7 +803,7 @@ export default function VisualPlan() {
                     Deleting...
                   </>
                 ) : (
-                  "Delete"
+                  t("common.delete")
                 )}
               </button>
             </div>

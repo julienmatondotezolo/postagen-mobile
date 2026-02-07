@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { saveMedia, getAllMedia, deleteMedia, getMediaUrl, clearAllMedia, type MediaFile } from "@/lib/db";
 import toast, { Toaster } from "react-hot-toast";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Compress an image file to a maximum dimension and quality.
@@ -76,6 +77,7 @@ async function compressImage(file: File, maxDimension: number = 1920, quality: n
 }
 
 export default function MediaUpload() {
+  const { t } = useI18n();
   const router = useRouter();
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [temporaryFiles, setTemporaryFiles] = useState<File[]>([]); // Store files temporarily before saving to DB
@@ -205,7 +207,7 @@ export default function MediaUpload() {
 
         // Check max limit
         if (temporaryFiles.length + newFiles.length >= 100) {
-          toast.error("Maximum 100 media files allowed", {
+          toast.error(t("upload.maxFiles"), {
             style: {
               background: '#ef4444',
               color: '#fff',
@@ -297,7 +299,7 @@ export default function MediaUpload() {
         return newSelected;
       });
       
-      toast.success("Media removed successfully", {
+      toast.success(t("upload.removeSuccess"), {
         style: {
           background: '#10b981',
           color: '#fff',
@@ -305,7 +307,7 @@ export default function MediaUpload() {
       });
     } catch (error) {
       console.error("Error removing media:", error);
-      toast.error("Failed to remove media", {
+      toast.error(t("upload.removeError"), {
         style: {
           background: '#ef4444',
           color: '#fff',
@@ -416,7 +418,7 @@ export default function MediaUpload() {
     
     setIsLoading(true);
     try {
-      toast.loading("Preparing your media...", { id: "saving" });
+      toast.loading(t("upload.preparing"), { id: "saving" });
       
       // Clear old media BEFORE saving new ones
       // This ensures only the new uploads are sent to backend
@@ -429,13 +431,13 @@ export default function MediaUpload() {
       }
       
       console.log(`💾 Saved ${temporaryFiles.length} new media file(s)`);
-      toast.success("Ready to generate!", { id: "saving", duration: 2000 });
+      toast.success(t("upload.ready"), { id: "saving", duration: 2000 });
       
       // Navigate to processing page
       router.push("/processing");
     } catch (error) {
       console.error("Error saving media:", error);
-      toast.error("Failed to save media", { id: "saving" });
+      toast.error(t("upload.saveError"), { id: "saving" });
       setIsLoading(false);
       isGeneratingRef.current = false;
     }
@@ -470,7 +472,7 @@ export default function MediaUpload() {
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-purple-500"></div>
             <span className="text-sm font-medium text-purple-600">
-              STEP 2 OF 4
+              {t("create.step2")}
             </span>
           </div>
         </div>
@@ -478,10 +480,10 @@ export default function MediaUpload() {
         {/* Title */}
         <div className="mb-8">
           <h1 className="mb-2 text-4xl font-bold text-gray-900">
-            Upload your <span className="font-serif italic font-normal text-violet-600">assets</span>
+            {t("upload.title")}
           </h1>
           <p className="text-base text-gray-600">
-            Add the photos and videos you want to include in your brand&apos;s AI-generated content plan.
+            {t("upload.subtitle")}
           </p>
         </div>
 
@@ -569,10 +571,10 @@ export default function MediaUpload() {
               </button>
               
               <h2 className="mb-2 text-2xl font-bold text-gray-900">
-                Drop media here
+                {t("upload.dropzone")}
               </h2>
               <p className="text-lg text-gray-400">
-                or tap to browse gallery
+                {t("upload.dropzoneOr")}
               </p>
             </>
           ) : (
@@ -580,7 +582,7 @@ export default function MediaUpload() {
             <>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">
-                  Your Assets
+                  {t("upload.yourAssets")}
                 </h2>
                 <div className="flex items-center gap-3">
                   {isSelectionMode && selectedMedia.size > 0 && (
@@ -588,14 +590,14 @@ export default function MediaUpload() {
                       onClick={handleDeleteSelected}
                       className="text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
                     >
-                      Delete ({selectedMedia.size})
+                      {t("upload.deleteSelected")} ({selectedMedia.size})
                     </button>
                   )}
                   <button 
                     onClick={handleSelectAll}
                     className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
                   >
-                    {selectedMedia.size === temporaryFiles.length ? "Deselect All" : "Select All"}
+                    {selectedMedia.size === temporaryFiles.length ? t("upload.deselectAll") : t("upload.selectAll")}
                   </button>
                 </div>
               </div>
@@ -719,7 +721,7 @@ export default function MediaUpload() {
           {/* Counter Badge - Fixed above buttons */}
           <div className="flex justify-end mb-3">
             <div className="px-4 py-2 rounded-full bg-white text-sm font-bold text-purple-600 shadow-lg">
-              {temporaryFiles.length} / 100
+              {temporaryFiles.length} {t("upload.counter")}
             </div>
           </div>
 
@@ -759,7 +761,7 @@ export default function MediaUpload() {
               disabled={temporaryFiles.length === 0 || isLoading}
               className="w-full rounded-2xl bg-gray-900 px-6 py-4 text-lg font-semibold text-white shadow-xl transition-all hover:bg-black hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              <span>Generate my Plan</span>
+              <span>{t("upload.generateBtn")}</span>
               <svg
                 className="h-5 w-5"
                 fill="none"

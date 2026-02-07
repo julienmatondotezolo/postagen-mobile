@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+
 interface MetricCard {
   title: string;
   value: string;
@@ -9,71 +11,69 @@ interface MetricCard {
   bgColor: string;
 }
 
-const metrics: MetricCard[] = [
-  {
-    title: "Engagement Rate",
-    value: "4.2%",
-    change: "+0.8%",
-    icon: (
-      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-      </svg>
-    ),
-    color: "text-pink-600",
-    bgColor: "bg-pink-50",
-  },
-  {
-    title: "Best Posting Times",
-    value: "12:00",
-    change: "Wed & Fri",
-    icon: (
-      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
-  },
-  {
-    title: "Top Posts",
-    value: "12",
-    change: "This month",
-    icon: (
-      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-      </svg>
-    ),
-    color: "text-violet-600",
-    bgColor: "bg-violet-50",
-  },
-  {
-    title: "Follower Growth",
-    value: "+248",
-    change: "Last 30 days",
-    icon: (
-      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-      </svg>
-    ),
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50",
-  },
-];
+function getMetrics(t: (key: string) => string): MetricCard[] {
+  return [
+    {
+      title: t("growth.engagement"),
+      value: "4.2%",
+      change: "+0.8%",
+      icon: (
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+        </svg>
+      ),
+      color: "text-pink-600",
+      bgColor: "bg-pink-50",
+    },
+    {
+      title: t("growth.bestTimes"),
+      value: "12:00",
+      change: "Wed & Fri",
+      icon: (
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      color: "text-amber-600",
+      bgColor: "bg-amber-50",
+    },
+    {
+      title: t("growth.topPosts"),
+      value: "12",
+      change: t("growth.thisMonth"),
+      icon: (
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+        </svg>
+      ),
+      color: "text-violet-600",
+      bgColor: "bg-violet-50",
+    },
+    {
+      title: t("growth.followers"),
+      value: "+248",
+      change: t("growth.last30"),
+      icon: (
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+        </svg>
+      ),
+      color: "text-emerald-600",
+      bgColor: "bg-emerald-50",
+    },
+  ];
+}
 
 export default function Growth() {
+  const { t } = useI18n();
+  const metrics = getMetrics(t);
   return (
     <div className="min-h-screen bg-mood-plan pb-24">
       <div className="mx-auto max-w-md px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <p className="mb-1 text-sm font-medium text-gray-500">
-            Performance Metrics
-          </p>
           <h1 className="text-4xl font-bold text-gray-900">
-            Track Your{" "}
-            <span className="font-serif italic font-normal text-violet-600">
-              Growth
-            </span>
+            {t("growth.title")}
           </h1>
         </div>
 
@@ -195,11 +195,10 @@ export default function Growth() {
             </div>
           </div>
           <h3 className="text-lg font-bold text-white mb-1">
-            Coming soon — Premium analytics
+            {t("growth.comingSoon")}
           </h3>
           <p className="text-sm text-purple-200 leading-relaxed">
-            Get deep insights into your content performance, optimal posting
-            times, and audience growth trends.
+            {t("growth.comingSoonDesc")}
           </p>
         </div>
       </div>

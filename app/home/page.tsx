@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { getAllPlans, deletePlan, type Plan } from "@/lib/db";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { useI18n } from "@/lib/i18n";
 
 interface DeleteModalState {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface DeleteModalState {
 }
 
 export default function HomePage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,11 +52,11 @@ export default function HomePage() {
     try {
       await deletePlan(deleteModal.plan.id);
       setPlans((prev) => prev.filter((p) => p.id !== deleteModal.plan!.id));
-      toast.success("Plan deleted");
+      toast.success(t("home.planDeleted"));
       setDeleteModal({ isOpen: false, plan: null });
     } catch (error) {
       console.error("Error deleting plan:", error);
-      toast.error("Failed to delete plan");
+      toast.error(t("home.deleteError"));
     } finally {
       setIsDeleting(false);
     }
@@ -122,9 +124,9 @@ export default function HomePage() {
               className="h-auto w-auto mb-6"
               priority
             />
-            <p className="mb-1 text-sm font-medium text-gray-500">Content Strategy</p>
+            <p className="mb-1 text-sm font-medium text-gray-500">{t("home.title")}</p>
             <h1 className="text-4xl font-bold text-gray-900">
-              Your <span className="font-serif italic font-normal text-violet-600">Plans</span>
+              {t("home.title")}
             </h1>
           </div>
 
@@ -132,7 +134,7 @@ export default function HomePage() {
           {isLoading ? (
             <div className="py-12 text-center">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-purple-600 border-r-transparent"></div>
-              <p className="mt-4 text-sm text-gray-500">Loading plans...</p>
+              <p className="mt-4 text-sm text-gray-500">{t("common.loading")}</p>
             </div>
           ) : plans.length === 0 ? (
             <div className="py-12 text-center">
@@ -143,9 +145,9 @@ export default function HomePage() {
                   </svg>
                 </div>
               </div>
-              <h3 className="mb-2 text-xl font-bold text-gray-900">No plans yet</h3>
+              <h3 className="mb-2 text-xl font-bold text-gray-900">{t("home.noPlan")}</h3>
               <p className="mb-6 text-sm text-gray-500">
-                Create your first content plan to get started!
+                {t("home.noPlanDesc")}
               </p>
               <button
                 onClick={() => router.push("/create")}
@@ -154,7 +156,7 @@ export default function HomePage() {
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
-                Create Your First Plan
+                {t("home.createFirst")}
               </button>
             </div>
           ) : (
@@ -207,7 +209,7 @@ export default function HomePage() {
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        <span className="font-medium">{plan.postIds.length} posts</span>
+                        <span className="font-medium">{plan.postIds.length} {t("home.posts")}</span>
                       </div>
                       {plan.isActive && (
                         <div className="ml-auto flex items-center gap-1.5 rounded-full bg-purple-50 px-2 py-1 text-purple-600">
@@ -244,14 +246,10 @@ export default function HomePage() {
             </div>
 
             <h3 className="mb-2 text-center text-xl font-bold text-gray-900">
-              Delete this plan?
+              {t("home.deletePlan")}
             </h3>
             <p className="mb-8 text-center text-sm text-gray-500 leading-relaxed">
-              &ldquo;{deleteModal.plan.name}&rdquo; and all{" "}
-              <span className="font-semibold text-red-500">
-                {deleteModal.plan.postIds.length} posts
-              </span>{" "}
-              will be permanently deleted. This can&rsquo;t be undone.
+              {t("home.deleteConfirm")}
             </p>
 
             <div className="space-y-3">
@@ -269,7 +267,7 @@ export default function HomePage() {
                     Deleting...
                   </>
                 ) : (
-                  "Delete Plan"
+                  t("home.deletePlan")
                 )}
               </button>
               <button
@@ -277,7 +275,7 @@ export default function HomePage() {
                 disabled={isDeleting}
                 className="w-full rounded-2xl bg-gray-100 py-4 text-sm font-bold text-gray-700 transition-all hover:bg-gray-200 disabled:opacity-50"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </div>

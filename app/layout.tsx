@@ -3,6 +3,7 @@ import { Inter, Playfair_Display } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
 import ToastProvider from "@/components/ToastProvider";
 import QueryProvider from "@/components/QueryProvider";
+import { I18nProvider } from "@/lib/i18n";
 import "./globals.css";
 
 const inter = Inter({
@@ -49,13 +50,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="nl">
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
-        <QueryProvider>
-          <ToastProvider />
-          {children}
-          <BottomNav />
-        </QueryProvider>
+        <I18nProvider>
+          <QueryProvider>
+            <ToastProvider />
+            {children}
+            <BottomNav />
+          </QueryProvider>
+        </I18nProvider>
       </body>
     </html>
   );

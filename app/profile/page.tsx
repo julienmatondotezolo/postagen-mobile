@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getBrandIdentity, type BrandIdentity } from "@/lib/db";
+import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 
 export default function ProfilePage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [brandIdentity, setBrandIdentity] = useState<BrandIdentity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,12 +31,8 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-md px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <p className="mb-1 text-sm font-medium text-gray-500">Account Settings</p>
           <h1 className="text-4xl font-bold text-gray-900">
-            Your{" "}
-            <span className="font-serif italic font-normal text-violet-600">
-              Profile
-            </span>
+            {t("profile.title")}
           </h1>
         </div>
 
@@ -53,13 +51,13 @@ export default function ProfilePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 7.5h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
                     </svg>
                   </div>
-                  <h2 className="text-lg font-bold text-gray-900">Brand Identity</h2>
+                  <h2 className="text-lg font-bold text-gray-900">{t("profile.brandIdentity")}</h2>
                 </div>
                 <button
                   onClick={() => router.push("/create")}
                   className="text-sm font-bold text-[#8B5CF6] hover:text-purple-700 transition-colors"
                 >
-                  {brandIdentity ? "Edit" : "Set Up"}
+                  {brandIdentity ? t("profile.edit") : t("profile.setup")}
                 </button>
               </div>
 
@@ -116,13 +114,13 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Account Settings</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t("profile.settings")}</h2>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-sm text-gray-600">Language</span>
-                  <span className="text-sm font-medium text-gray-900">Nederlands</span>
+                  <span className="text-sm text-gray-600">{t("profile.language")}</span>
+                  <LanguageSwitcher />
                 </div>
                 <div className="h-px bg-gray-100" />
                 <div className="flex items-center justify-between py-1">
@@ -142,12 +140,12 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
                   </svg>
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">About Postagen</h2>
+                <h2 className="text-lg font-bold text-gray-900">{t("profile.about")}</h2>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-sm text-gray-600">Version</span>
+                  <span className="text-sm text-gray-600">{t("profile.version")}</span>
                   <span className="text-sm font-medium text-gray-900">1.0.0</span>
                 </div>
                 <div className="h-px bg-gray-100" />

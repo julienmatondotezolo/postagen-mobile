@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
 import {
   getAllPosts,
   getAllMedia,
@@ -37,9 +38,9 @@ function formatDateKey(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 export default function CalendarPage() {
+  const { t } = useI18n();
+  const DAY_LABELS = [t("calendar.mon"), t("calendar.tue"), t("calendar.wed"), t("calendar.thu"), t("calendar.fri"), t("calendar.sat"), t("calendar.sun")];
   const router = useRouter();
   const [posts, setPosts] = useState<PostWithContext[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +82,7 @@ export default function CalendarPage() {
       const enriched: PostWithContext[] = allPosts.map((post) => ({
         ...post,
         media: mediaMap.get(post.mediaId),
-        planName: postToPlan.get(post.id) || "Unassigned",
+        planName: postToPlan.get(post.id) || t("calendar.unassigned"),
       }));
 
       setPosts(enriched);
@@ -128,14 +129,8 @@ export default function CalendarPage() {
       <div className="mx-auto max-w-md px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <p className="mb-1 text-sm font-medium text-gray-500">
-            Content Overview
-          </p>
           <h1 className="text-4xl font-bold text-gray-900">
-            Your{" "}
-            <span className="font-serif italic font-normal text-violet-600">
-              Calendar
-            </span>
+            {t("calendar.title")}
           </h1>
         </div>
 
@@ -252,7 +247,7 @@ export default function CalendarPage() {
         {isLoading ? (
           <div className="py-12 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-r-transparent" />
-            <p className="mt-4 text-sm text-gray-500">Loading calendar...</p>
+            <p className="mt-4 text-sm text-gray-500">{t("common.loading")}</p>
           </div>
         ) : selectedDayPosts.length === 0 ? (
           <div className="py-12 text-center rounded-3xl bg-white/40 backdrop-blur-sm border border-white">
@@ -274,7 +269,7 @@ export default function CalendarPage() {
               </div>
             </div>
             <p className="text-gray-400 font-medium">
-              No posts scheduled for this day
+              {t("calendar.noPosts")}
             </p>
             <p className="mt-1 text-xs text-gray-300">
               Create a plan to fill your calendar

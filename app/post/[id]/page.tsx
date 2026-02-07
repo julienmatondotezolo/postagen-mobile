@@ -3,8 +3,10 @@
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getAllPosts, getAllMedia, getMediaUrl, updatePost, type Post, type MediaFile } from "@/lib/db";
+import { useI18n } from "@/lib/i18n";
 
 export default function PostDetail() {
+  const { t } = useI18n();
   const router = useRouter();
   const params = useParams();
   const postId = params.id as string;
@@ -68,7 +70,7 @@ export default function PostDetail() {
   if (!post) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-mood-detail">
-        <div className="animate-pulse text-purple-600 font-bold">Loading...</div>
+        <div className="animate-pulse text-purple-600 font-bold">{t("common.loading")}</div>
       </div>
     );
   }
@@ -107,7 +109,7 @@ export default function PostDetail() {
               />
             </svg>
           </button>
-          <h1 className="text-xl font-bold text-gray-900">Review Post</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("plan.postDetails")}</h1>
           <button className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm border border-gray-50">
             <svg
               className="h-6 w-6 text-gray-700"
@@ -210,7 +212,7 @@ export default function PostDetail() {
         <div className="mb-6 rounded-[32px] bg-white p-6 shadow-sm border border-gray-50">
           <div className="mb-4 flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">
-              CAPTION
+              {t("plan.caption")}
             </span>
             {!isEditing ? (
               <button
@@ -230,14 +232,14 @@ export default function PostDetail() {
                     d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                   />
                 </svg>
-                Edit
+                {t("plan.edit")}
               </button>
             ) : (
               <button
                 onClick={handleSaveCaption}
                 className="text-sm font-bold text-purple-600"
               >
-                Save
+                {t("common.save")}
               </button>
             )}
           </div>
@@ -330,7 +332,7 @@ export default function PostDetail() {
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
-            Copy & Open Instagram
+            {t("plan.copyCaption")} & Instagram
           </button>
           <button
             onClick={() => handleCopyAndOpen("facebook")}
@@ -343,7 +345,7 @@ export default function PostDetail() {
             >
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
             </svg>
-            Copy & Open Facebook
+            {t("plan.copyCaption")} & Facebook
           </button>
         </div>
 
