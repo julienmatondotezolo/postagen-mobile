@@ -377,12 +377,20 @@ export default function Processing() {
             <p className="mb-8 text-base text-gray-600 font-medium">
               Controleer je verbinding en probeer het opnieuw.
             </p>
-            <button
-              onClick={handleRetry}
-              className="rounded-2xl bg-[#8B5CF6] px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-200 transition-all hover:bg-purple-600 hover:shadow-2xl hover:shadow-purple-300 hover:-translate-y-0.5 active:scale-[0.98]"
-            >
-              {t("common.retry")}
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleRetry}
+                className="w-full rounded-2xl bg-[#8B5CF6] px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-200 transition-all hover:bg-purple-600 hover:shadow-2xl hover:shadow-purple-300 hover:-translate-y-0.5 active:scale-[0.98]"
+              >
+                {t("common.retry")}
+              </button>
+              <button
+                onClick={() => router.push("/home")}
+                className="w-full rounded-2xl bg-gray-100 px-8 py-4 text-lg font-semibold text-gray-700 transition-all hover:bg-gray-200 active:scale-[0.98]"
+              >
+                {t("common.back")}
+              </button>
+            </div>
           </>
         ) : (
           <>
