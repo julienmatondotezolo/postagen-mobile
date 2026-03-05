@@ -6,11 +6,9 @@ import { useMutation } from "@tanstack/react-query";
 import {
   getAllMedia,
   getBrandIdentity,
-  savePost,
-  createPlan,
   updateMedia,
-  type Post,
 } from "@/lib/db";
+import { createPlanApi } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
 import { useI18n } from "@/lib/i18n";
@@ -248,36 +246,27 @@ export default function Processing() {
           }
         }
 
-        // --- Save posts to IndexedDB ---
-        for (const post of data.posts) {
-          const validPost: Post = {
-            id: post.id,
-            mediaId: post.mediaId,
-            caption: post.caption,
-            hashtags: post.hashtags,
-            scheduledDate: post.scheduledDate,
-            scheduledTime: post.scheduledTime,
-            dayName: post.dayName,
-            sentiment: post.sentiment,
-            isOptimized: post.isOptimized,
-            createdAt: post.createdAt,
-            thumbnail: post.thumbnail,
-          };
-          await savePost(validPost);
-        }
+        // --- Create plan + posts via API ---
+        const postData = data.posts.map((post) => ({
+          caption: post.caption,
+          hashtags: post.hashtags,
+          scheduled_date: post.scheduledDate,
+          scheduled_time: post.scheduledTime,
+          day_name: post.dayName,
+          sentiment: post.sentiment,
+          is_optimized: post.isOptimized,
+          thumbnail: post.thumbnail || null,
+          media_id: null, // Media IDs from IndexedDB don't match Supabase UUIDs
+        }));
 
-        // --- Create plan in IndexedDB ---
-        const postIds = data.posts.map((p) => p.id);
-        const mediaIds = mediaFiles.map((m) => m.id);
-        const newPlan = await createPlan(
-          data.planName,
-          postIds,
-          mediaIds,
-          data.planDescription,
-          "Draft"
-        );
+        const result = await createPlanApi({
+          name: data.planName,
+          description: data.planDescription,
+          status: "Draft",
+          posts: postData,
+        });
 
-        return newPlan;
+        return result.plan;
       } catch (fetchError: unknown) {
         clearTimeout(timeoutId);
         apiDoneRef.current = true;

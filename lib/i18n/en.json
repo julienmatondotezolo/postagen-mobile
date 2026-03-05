@@ -81,7 +81,15 @@
     "continueBtn": "Continue",
     "folder_all": "All",
     "folder_liked": "Liked",
-    "folder_unsorted": "Unsorted"
+    "folder_unsorted": "Unsorted",
+    "selectFolder": "Select a folder",
+    "createNewFolder": "Create new folder",
+    "unsortedFolder": "Unsorted",
+    "uploading": "Uploading...",
+    "uploadingProgress": "Uploading... {percent}%",
+    "alreadyUploading": "Upload in progress",
+    "allUploaded": "All files uploaded!",
+    "filesOf": "files uploaded"
   },
   "context": {
     "step": "Step 3 of 3",
@@ -127,7 +135,8 @@
     "caption": "Caption",
     "copied": "Caption copied!",
     "copyCaption": "Copy caption",
-    "scheduledFor": "Scheduled for"
+    "scheduledFor": "Scheduled for",
+    "noMedia": "No media attached"
   },
   "calendar": {
     "title": "Calendar",
@@ -160,7 +169,11 @@
     "language": "Language",
     "settings": "Settings",
     "about": "About Postagen",
-    "version": "Version"
+    "version": "Version",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "passwordChanged": "Password changed successfully"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -191,7 +204,18 @@
     "allSorted": "All sorted!",
     "allSortedDesc": "You've sorted all your media. Nice work!",
     "backToMedia": "Back to media",
-    "swipeError": "Could not update media"
+    "swipeError": "Could not update media",
+    "deleted": "media deleted",
+    "deleteError": "Could not delete media",
+    "deleteTitle": "Delete media",
+    "deleteConfirm": "Are you sure you want to delete {count} items? This cannot be undone.",
+    "newFolder": "New Folder",
+    "folderNamePlaceholder": "Folder name...",
+    "folderCreated": "Folder created",
+    "folderRenamed": "Folder renamed",
+    "folderDeleted": "Folder deleted",
+    "folderError": "Could not update folder",
+    "renameFolder": "Rename"
   },
   "auth": {
     "loginSubtitle": "Log in to continue",

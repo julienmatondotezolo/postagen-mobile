@@ -3,18 +3,13 @@
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import {
-  getPlanById,
-  getPostsByIds,
-  getAllMedia,
-  getMediaUrl,
-  deletePlan,
-  deletePost,
-  updatePost,
-  updatePlan,
-  type Post,
-  type MediaFile,
-  type Plan,
-} from "@/lib/db";
+  getPlan,
+  deletePlanApi,
+  deletePostApi,
+  updatePostApi,
+  type ApiPlan,
+  type ApiPost,
+} from "@/lib/api";
 import toast from "react-hot-toast";
 import { useI18n } from "@/lib/i18n";
 
@@ -54,8 +49,8 @@ export default function VisualPlan() {
   const params = useParams();
   const planId = params.id as string;
 
-  const [plan, setPlan] = useState<Plan | null>(null);
-  const [posts, setPosts] = useState<(Post & { media?: MediaFile })[]>([]);
+  const [plan, setPlan] = useState<ApiPlan | null>(null);
+  const [posts, setPosts] = useState<ApiPost[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [days, setDays] = useState<
     Array<{ label: string; full: string; date: string; num: number }>
@@ -120,56 +115,23 @@ export default function VisualPlan() {
 
   const loadPlan = async () => {
     try {
-      const planData = await getPlanById(planId);
-      if (!planData) {
+      const data = await getPlan(planId);
+      if (!data?.plan) {
         router.push("/home");
         return;
       }
 
-      setPlan(planData);
-
-      const [planPosts, allMedia] = await Promise.all([
-        getPostsByIds(planData.postIds),
-        getAllMedia(),
-      ]);
-
-      console.log("📊 Debug - All media in IndexedDB:", allMedia.map(m => ({
-        id: m.id,
-        type: m.type,
-        mimeType: m.mimeType,
-        sizeKB: (m.base64.length / 1024).toFixed(0)
-      })));
-      
-      console.log("📝 Debug - All posts:", planPosts.map(p => ({
-        id: p.id,
-        mediaId: p.mediaId,
-        caption: p.caption.substring(0, 50)
-      })));
-
-      const mediaMap = new Map(allMedia.map((m) => [m.id, m]));
-      const postsWithMedia = planPosts.map((post) => {
-        const media = mediaMap.get(post.mediaId);
-        if (!media) {
-          console.error(`❌ No media found for post ${post.id} (mediaId: ${post.mediaId})`);
-          console.error("   Available media IDs:", Array.from(mediaMap.keys()));
-        } else {
-          console.log(`✅ Loaded ${media.type} for post ${post.id} (mediaId: ${post.mediaId})`);
-        }
-        return {
-          ...post,
-          media,
-        };
-      });
-
-      setPosts(postsWithMedia);
+      setPlan(data.plan);
+      setPosts(data.posts);
     } catch (error) {
       console.error("Error loading plan:", error);
+      router.push("/home");
     }
   };
 
   useEffect(() => {
     if (posts.length > 0 && !selectedDate) {
-      setSelectedDate(posts[0].scheduledDate);
+      setSelectedDate(posts[0].scheduled_date || days[0]?.date || "");
     } else if (days.length > 0 && !selectedDate) {
       setSelectedDate(days[0].date);
     }
@@ -180,7 +142,7 @@ export default function VisualPlan() {
     if (!plan) return;
     setIsDeleting(true);
     try {
-      await deletePlan(plan.id);
+      await deletePlanApi(plan.id);
       toast.success(t("home.planDeleted"));
       router.push("/home");
     } catch (error) {
@@ -193,7 +155,7 @@ export default function VisualPlan() {
   };
 
   // --- Post editing ---
-  const handleStartEdit = (post: Post) => {
+  const handleStartEdit = (post: ApiPost) => {
     setEditingPostId(post.id);
     setEditedCaption(post.caption);
   };
@@ -201,11 +163,11 @@ export default function VisualPlan() {
   const handleSaveEdit = async () => {
     if (!editingPostId) return;
     try {
-      await updatePost(editingPostId, { caption: editedCaption });
+      await updatePostApi(editingPostId, { caption: editedCaption });
       toast.success(t("common.save"));
       setEditingPostId(null);
       setEditedCaption("");
-      await loadPlan(); // Reload to reflect changes
+      await loadPlan();
     } catch (error) {
       console.error("Error updating post:", error);
       toast.error(t("processing.error"));
@@ -227,17 +189,11 @@ export default function VisualPlan() {
     if (!postToDelete || !plan) return;
     setIsDeletingPost(true);
     try {
-      // 1. Delete the post from IndexedDB
-      await deletePost(postToDelete);
-
-      // 2. Update the plan's postIds array
-      const newPostIds = plan.postIds.filter((id) => id !== postToDelete);
-      await updatePlan(plan.id, { postIds: newPostIds });
-
+      await deletePostApi(postToDelete);
       toast.success(t("common.delete"));
       setShowDeletePostModal(false);
       setPostToDelete(null);
-      await loadPlan(); // Reload to reflect changes
+      await loadPlan();
     } catch (error) {
       console.error("Error deleting post:", error);
       toast.error(t("processing.error"));
@@ -247,7 +203,7 @@ export default function VisualPlan() {
   };
 
   const filteredPosts = posts.filter(
-    (post) => post.scheduledDate === selectedDate
+    (post) => post.scheduled_date === selectedDate
   );
 
   const getColorForTime = (time: string) => {
@@ -360,7 +316,7 @@ export default function VisualPlan() {
               {days.map((day, index) => {
                 const isSelected = selectedDate === day.date;
                 const hasPost = posts.some(
-                  (post) => post.scheduledDate === day.date
+                  (post) => post.scheduled_date === day.date
                 );
                 return (
                   <button
@@ -459,11 +415,11 @@ export default function VisualPlan() {
                     <div className="flex items-center justify-between px-6 pt-6">
                       <div className="flex items-center gap-2">
                         <div
-                          className={`h-2 w-2 rounded-full ${getColorForTime(post.scheduledTime)}`}
+                          className={`h-2 w-2 rounded-full ${getColorForTime(post.scheduled_time || "")}`}
                         ></div>
                         <span className="text-xs font-bold text-gray-400 tracking-wide">
-                          {post.scheduledTime} •{" "}
-                          {post.dayName?.toUpperCase() || "MONDAY"}
+                          {post.scheduled_time} •{" "}
+                          {post.day_name?.toUpperCase() || "MONDAY"}
                         </span>
                       </div>
                       {/* Delete post button */}
@@ -489,41 +445,28 @@ export default function VisualPlan() {
                     </div>
 
                     {/* Image/Video */}
-                    {post.media ? (
+                    {post.media_url ? (
                       <div className="relative mx-4 mt-4 aspect-4/3 overflow-hidden rounded-[32px] bg-gray-50 group">
-                        {post.media.type === "image" ? (
+                        {post.media_type === "image" ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={getMediaUrl(post.media)}
+                            src={post.media_url}
                             alt="Post"
                             className="h-full w-full object-cover"
                           />
-                        ) : post.media.type === "video" ? (
+                        ) : post.media_type === "video" ? (
                           <div className="relative h-full w-full bg-black">
                             {playingVideos.has(post.id) ? (
-                              // Video player
                               <video
-                                src={getMediaUrl(post.media)}
+                                src={post.media_url}
                                 className="h-full w-full object-cover rounded-[32px]"
                                 controls
                                 autoPlay
                                 preload="metadata"
                                 playsInline
-                                onError={(e) => {
-                                  console.error('❌ Video playback error:', {
-                                    mediaId: post.media?.id,
-                                    mimeType: post.media?.mimeType,
-                                    errorCode: e.currentTarget.error?.code,
-                                    errorMsg: e.currentTarget.error?.message
-                                  });
-                                }}
-                                onLoadedMetadata={() => {
-                                  console.log('✅ Video playing:', post.media?.id);
-                                }}
                               />
                             ) : (
-                              // Show thumbnail with play button
-                              <div 
+                              <div
                                 className="relative h-full w-full cursor-pointer"
                                 onClick={() => {
                                   setPlayingVideos(prev => new Set([...prev, post.id]));
@@ -557,7 +500,7 @@ export default function VisualPlan() {
                           </div>
                         ) : (
                           <div className="flex items-center justify-center h-full">
-                            <p className="text-gray-500">Unknown media type: {post.media.type}</p>
+                            <p className="text-gray-500">Unknown media type</p>
                           </div>
                         )}
                         <div className="absolute bottom-6 left-6 right-6 flex gap-3">
@@ -605,13 +548,12 @@ export default function VisualPlan() {
                         </div>
                       </div>
                     ) : (
-                      <div className="relative mx-4 mt-4 aspect-4/3 overflow-hidden rounded-[32px] bg-red-50 border-2 border-red-200 flex items-center justify-center">
+                      <div className="relative mx-4 mt-4 aspect-4/3 overflow-hidden rounded-[32px] bg-gray-50 border-2 border-gray-200 flex items-center justify-center">
                         <div className="text-center p-6">
-                          <svg className="h-12 w-12 mx-auto mb-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          <svg className="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          <p className="text-sm font-bold text-red-600">Media niet gevonden</p>
-                          <p className="text-xs text-red-500 mt-1">ID: {post.mediaId}</p>
+                          <p className="text-sm font-medium text-gray-400">{t("plan.noMedia")}</p>
                         </div>
                       </div>
                     )}

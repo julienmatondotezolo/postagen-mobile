@@ -81,7 +81,15 @@
     "continueBtn": "Doorgaan",
     "folder_all": "Alles",
     "folder_liked": "Geliked",
-    "folder_unsorted": "Ongesorteerd"
+    "folder_unsorted": "Ongesorteerd",
+    "selectFolder": "Selecteer een map",
+    "createNewFolder": "Nieuwe map aanmaken",
+    "unsortedFolder": "Ongesorteerd",
+    "uploading": "Uploaden...",
+    "uploadingProgress": "Uploaden... {percent}%",
+    "alreadyUploading": "Upload bezig",
+    "allUploaded": "Alle bestanden geüpload!",
+    "filesOf": "bestanden geüpload"
   },
   "context": {
     "step": "Stap 3 van 3",
@@ -127,7 +135,8 @@
     "caption": "Bijschrift",
     "copied": "Bijschrift gekopieerd!",
     "copyCaption": "Kopieer bijschrift",
-    "scheduledFor": "Ingepland voor"
+    "scheduledFor": "Ingepland voor",
+    "noMedia": "Geen media bijgevoegd"
   },
   "calendar": {
     "title": "Kalender",
@@ -160,7 +169,11 @@
     "language": "Taal",
     "settings": "Instellingen",
     "about": "Over Postagen",
-    "version": "Versie"
+    "version": "Versie",
+    "changePassword": "Wachtwoord wijzigen",
+    "currentPassword": "Huidig wachtwoord",
+    "newPassword": "Nieuw wachtwoord",
+    "passwordChanged": "Wachtwoord succesvol gewijzigd"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -191,7 +204,18 @@
     "allSorted": "Alles gesorteerd!",
     "allSortedDesc": "Je hebt al je media gesorteerd. Goed gedaan!",
     "backToMedia": "Terug naar media",
-    "swipeError": "Kon media niet bijwerken"
+    "swipeError": "Kon media niet bijwerken",
+    "deleted": "media verwijderd",
+    "deleteError": "Kon media niet verwijderen",
+    "deleteTitle": "Media verwijderen",
+    "deleteConfirm": "Weet je zeker dat je {count} items wilt verwijderen? Dit kan niet ongedaan worden.",
+    "newFolder": "Nieuwe Map",
+    "folderNamePlaceholder": "Mapnaam...",
+    "folderCreated": "Map aangemaakt",
+    "folderRenamed": "Map hernoemd",
+    "folderDeleted": "Map verwijderd",
+    "folderError": "Kon map niet bijwerken",
+    "renameFolder": "Hernoemen"
   },
   "auth": {
     "loginSubtitle": "Log in om verder te gaan",

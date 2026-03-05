@@ -2,27 +2,29 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { getAllPlans, deletePlan, type Plan } from "@/lib/db";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getMediaStats, getMedia, uploadMedia, type MediaRecord } from "@/lib/api";
+import { getMediaStats, getMedia, getPlans, deletePlanApi, type MediaRecord, type ApiPlan } from "@/lib/api";
 import { compressFiles } from "@/lib/compress";
+import { migrateIndexedDBToSupabase } from "@/lib/migrate";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n";
+import { useUpload } from "@/lib/upload";
+import FolderSelectModal from "@/components/FolderSelectModal";
 
 interface DeleteModalState {
   isOpen: boolean;
-  plan: Plan | null;
+  plan: ApiPlan | null;
 }
 
 export default function HomePage() {
   const { t } = useI18n();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const upload = useUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false);
+  const [showFolderSelect, setShowFolderSelect] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
     isOpen: false,
     plan: null,
@@ -41,62 +43,50 @@ export default function HomePage() {
     queryFn: () => getMedia("all", 8),
   });
 
-  useEffect(() => {
-    loadPlans();
-  }, []);
+  // Plans from API
+  const { data: plans = [], isLoading } = useQuery({
+    queryKey: ["plans"],
+    queryFn: getPlans,
+  });
 
-  const loadPlans = async () => {
-    try {
-      const allPlans = await getAllPlans();
-      setPlans(allPlans);
-    } catch (error) {
-      console.error("Error loading plans:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Migrate IndexedDB on mount
+  useEffect(() => {
+    migrateIndexedDBToSupabase().then(() => {
+      queryClient.invalidateQueries({ queryKey: ["plans"] });
+    });
+  }, [queryClient]);
 
   const handleQuickUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
 
-    setIsUploading(true);
-    try {
-      toast.loading(t("dashboard.uploading"), { id: "quick-upload" });
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
+    try {
       const compressed = await compressFiles(Array.from(fileList));
       if (compressed.length === 0) {
-        toast.error(t("dashboard.uploadFailed"), { id: "quick-upload" });
+        toast.error(t("dashboard.uploadFailed"));
         return;
       }
-
-      const formData = new FormData();
-      for (const file of compressed) {
-        formData.append("files", file);
-      }
-
-      await uploadMedia(formData);
-
-      toast.success(
-        `${compressed.length} ${t("dashboard.filesUploaded")}`,
-        { id: "quick-upload" }
-      );
-
-      // Refresh stats and recent media
-      queryClient.invalidateQueries({ queryKey: ["media-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["media-recent"] });
+      setPendingFiles(compressed);
+      setShowFolderSelect(true);
     } catch (error) {
-      console.error("Quick upload error:", error);
-      toast.error(t("dashboard.uploadFailed"), { id: "quick-upload" });
-    } finally {
-      setIsUploading(false);
-      // Reset input so same file can be re-selected
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      console.error("Compress error:", error);
+      toast.error(t("dashboard.uploadFailed"));
+    }
+  };
+
+  const handleFolderSelect = (folderId: string) => {
+    setShowFolderSelect(false);
+    if (pendingFiles.length > 0) {
+      upload.startUpload(pendingFiles, folderId);
+      setPendingFiles([]);
     }
   };
 
   const handleDeleteClick = useCallback(
-    (e: React.MouseEvent, plan: Plan) => {
+    (e: React.MouseEvent, plan: ApiPlan) => {
       e.stopPropagation();
       setDeleteModal({ isOpen: true, plan });
     },
@@ -107,8 +97,8 @@ export default function HomePage() {
     if (!deleteModal.plan) return;
     setIsDeleting(true);
     try {
-      await deletePlan(deleteModal.plan.id);
-      setPlans((prev) => prev.filter((p) => p.id !== deleteModal.plan!.id));
+      await deletePlanApi(deleteModal.plan.id);
+      queryClient.invalidateQueries({ queryKey: ["plans"] });
       toast.success(t("home.planDeleted"));
       setDeleteModal({ isOpen: false, plan: null });
     } catch (error) {
@@ -123,7 +113,7 @@ export default function HomePage() {
     setDeleteModal({ isOpen: false, plan: null });
   };
 
-  const getStatusColor = (status: Plan["status"]) => {
+  const getStatusColor = (status: ApiPlan["status"]) => {
     switch (status) {
       case "Draft":
         return "bg-gray-100 text-gray-600";
@@ -136,7 +126,7 @@ export default function HomePage() {
     }
   };
 
-  const getStatusIcon = (status: Plan["status"]) => {
+  const getStatusIcon = (status: ApiPlan["status"]) => {
     switch (status) {
       case "Draft":
         return (
@@ -159,8 +149,8 @@ export default function HomePage() {
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -216,7 +206,7 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{plans.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{plans?.length ?? 0}</p>
               <p className="text-xs text-gray-500">{t("dashboard.plans")}</p>
             </div>
           </div>
@@ -256,15 +246,22 @@ export default function HomePage() {
               {t("dashboard.quickUpload")}
             </h2>
             <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
+              onClick={() => !upload.isUploading && fileInputRef.current?.click()}
+              disabled={upload.isUploading}
               className="w-full rounded-2xl border-2 border-dashed border-purple-200 bg-white/60 p-6 text-center transition-all hover:border-purple-400 hover:bg-purple-50/50 active:scale-[0.98] disabled:opacity-50"
             >
-              {isUploading ? (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
+              {upload.isUploading ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-full max-w-[200px]">
+                    <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-purple-100">
+                      <div
+                        className="h-full rounded-full bg-purple-600 transition-all duration-300"
+                        style={{ width: `${upload.percent}%` }}
+                      />
+                    </div>
+                  </div>
                   <p className="text-sm font-medium text-purple-600">
-                    {t("dashboard.uploading")}
+                    {t("upload.uploadingProgress").replace("{percent}", String(upload.percent))}
                   </p>
                 </div>
               ) : (
@@ -399,7 +396,7 @@ export default function HomePage() {
                         <div className="flex-1">
                           <h3 className="mb-0.5 text-base font-bold text-gray-900">{plan.name}</h3>
                           <p className="text-xs text-gray-500">
-                            {formatDate(plan.createdAt)}
+                            {formatDate(plan.created_at)}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -426,17 +423,11 @@ export default function HomePage() {
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <div className="flex items-center gap-1.5">
                           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <span className="font-medium">{plan.mediaIds.length} media</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
-                          <span className="font-medium">{plan.postIds.length} {t("home.posts")}</span>
+                          <span className="font-medium">{plan.post_count} {t("home.posts")}</span>
                         </div>
-                        {plan.isActive && (
+                        {plan.is_active && (
                           <div className="ml-auto flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-purple-600">
                             <div className="h-1.5 w-1.5 rounded-full bg-purple-600"></div>
                             <span className="text-[10px] font-bold">Active</span>
@@ -451,6 +442,16 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Folder Select Modal */}
+      <FolderSelectModal
+        isOpen={showFolderSelect}
+        onClose={() => {
+          setShowFolderSelect(false);
+          setPendingFiles([]);
+        }}
+        onSelect={handleFolderSelect}
+      />
 
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && deleteModal.plan && (

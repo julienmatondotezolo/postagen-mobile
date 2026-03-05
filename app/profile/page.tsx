@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/config";
+import { changePassword } from "@/lib/api";
+import toast from "react-hot-toast";
 
 interface BrandIdentity {
   businessName?: string;
@@ -19,6 +21,35 @@ export default function ProfilePage() {
   const [brandIdentity, setBrandIdentity] = useState<BrandIdentity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [isChangingPw, setIsChangingPw] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (newPw.length < 8) {
+      toast.error(t("auth.passwordMin"));
+      return;
+    }
+    if (newPw !== confirmPw) {
+      toast.error(t("auth.passwordMismatch"));
+      return;
+    }
+    setIsChangingPw(true);
+    try {
+      await changePassword(currentPw, newPw);
+      toast.success(t("profile.passwordChanged"));
+      setShowPasswordModal(false);
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("processing.error"));
+    } finally {
+      setIsChangingPw(false);
+    }
+  };
 
   useEffect(() => {
     const loadBrand = async () => {
@@ -172,6 +203,16 @@ export default function ProfilePage() {
                   <LanguageSwitcher />
                 </div>
                 <div className="h-px bg-gray-100" />
+                <button
+                  onClick={() => setShowPasswordModal(true)}
+                  className="flex w-full items-center justify-between py-1"
+                >
+                  <span className="text-sm text-gray-600">{t("profile.changePassword")}</span>
+                  <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                <div className="h-px bg-gray-100" />
                 <div className="flex items-center justify-between py-1">
                   <span className="text-sm text-gray-600">Notifications</span>
                   <div className="flex h-6 w-11 items-center rounded-full bg-[#8B5CF6] px-0.5">
@@ -220,6 +261,78 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm px-6"
+          onClick={() => setShowPasswordModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-[32px] bg-white p-8 shadow-2xl slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-6 text-xl font-bold text-gray-900">{t("profile.changePassword")}</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-400">
+                  {t("profile.currentPassword")}
+                </label>
+                <input
+                  type="password"
+                  value={currentPw}
+                  onChange={(e) => setCurrentPw(e.target.value)}
+                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-400">
+                  {t("profile.newPassword")}
+                </label>
+                <input
+                  type="password"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder={t("auth.passwordPlaceholder")}
+                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-400">
+                  {t("auth.confirmPassword")}
+                </label>
+                <input
+                  type="password"
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  placeholder={t("auth.confirmPasswordPlaceholder")}
+                  className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setCurrentPw("");
+                  setNewPw("");
+                  setConfirmPw("");
+                }}
+                className="flex-1 rounded-2xl bg-gray-100 py-3 text-sm font-bold text-gray-700"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleChangePassword}
+                disabled={isChangingPw || !currentPw || !newPw || !confirmPw}
+                className="flex-1 rounded-2xl bg-purple-600 py-3 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {isChangingPw ? t("common.loading") : t("common.save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

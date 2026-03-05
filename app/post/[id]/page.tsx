@@ -2,7 +2,7 @@
 
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getAllPosts, getAllMedia, getMediaUrl, updatePost, type Post, type MediaFile } from "@/lib/db";
+import { getPost, updatePostApi, type ApiPost } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
 export default function PostDetail() {
@@ -10,24 +10,16 @@ export default function PostDetail() {
   const router = useRouter();
   const params = useParams();
   const postId = params.id as string;
-  const [post, setPost] = useState<(Post & { media?: MediaFile }) | null>(null);
+  const [post, setPost] = useState<ApiPost | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCaption, setEditedCaption] = useState("");
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   const loadPost = async () => {
     try {
-      const [allPosts, allMedia] = await Promise.all([
-        getAllPosts(),
-        getAllMedia(),
-      ]);
-
-      const foundPost = allPosts.find((p) => p.id === postId);
-      if (foundPost) {
-        const media = allMedia.find((m) => m.id === foundPost.mediaId);
-        setPost({ ...foundPost, media });
-        setEditedCaption(foundPost.caption);
-      }
+      const data = await getPost(postId);
+      setPost(data);
+      setEditedCaption(data.caption);
     } catch (error) {
       console.error("Error loading post:", error);
     }
@@ -41,7 +33,7 @@ export default function PostDetail() {
   const handleSaveCaption = async () => {
     if (!post) return;
     try {
-      await updatePost(post.id, { caption: editedCaption });
+      await updatePostApi(post.id, { caption: editedCaption });
       setIsEditing(false);
       await loadPost();
     } catch (error) {
@@ -53,10 +45,10 @@ export default function PostDetail() {
     if (!post) return;
 
     const fullText = `${post.caption}\n\n${post.hashtags.join(" ")}`;
-    
+
     try {
       await navigator.clipboard.writeText(fullText);
-      
+
       if (platform === "instagram") {
         window.open("https://www.instagram.com/", "_blank");
       } else {
@@ -79,7 +71,7 @@ export default function PostDetail() {
     const date = new Date(dateStr);
     const today = new Date();
     const isToday = date.toDateString() === today.toDateString();
-    
+
     if (isToday) {
       return `Today, ${time}`;
     }
@@ -126,41 +118,28 @@ export default function PostDetail() {
         {/* Post Preview */}
         <div className="mb-8 rounded-[48px] bg-[#E6D5C3]/40 p-5">
           <div className="relative overflow-hidden rounded-[36px] bg-white shadow-2xl shadow-orange-100/50">
-            {post.media && (
+            {post.media_url && (
               <div className="relative aspect-square overflow-hidden">
-                {post.media.type === "image" ? (
+                {post.media_type === "image" ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={getMediaUrl(post.media)}
+                    src={post.media_url}
                     alt="Post"
                     className="h-full w-full object-cover"
                   />
-                ) : post.media.type === "video" ? (
+                ) : post.media_type === "video" ? (
                   <div className="relative h-full w-full bg-black">
                     {isVideoPlaying ? (
-                      // Video player
                       <video
-                        src={getMediaUrl(post.media)}
+                        src={post.media_url}
                         className="h-full w-full object-cover"
                         controls
                         autoPlay
                         playsInline
                         preload="metadata"
-                        onError={(e) => {
-                          console.error('❌ Video playback error:', {
-                            mediaId: post.media?.id,
-                            mimeType: post.media?.mimeType,
-                            errorCode: e.currentTarget.error?.code,
-                            errorMsg: e.currentTarget.error?.message
-                          });
-                        }}
-                        onLoadedMetadata={() => {
-                          console.log('✅ Video loaded:', post.media?.id);
-                        }}
                       />
                     ) : (
-                      // Show thumbnail with play button
-                      <div 
+                      <div
                         className="relative h-full w-full cursor-pointer"
                         onClick={() => setIsVideoPlaying(true)}
                       >
@@ -195,7 +174,7 @@ export default function PostDetail() {
                     <p className="text-gray-400">Unknown media type</p>
                   </div>
                 )}
-                {post.isOptimized && (
+                {post.is_optimized && (
                   <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-[#4ADE80] px-4 py-1.5 shadow-lg">
                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse"></div>
                     <span className="text-[10px] font-black text-white tracking-widest uppercase">
@@ -289,7 +268,9 @@ export default function PostDetail() {
               </span>
             </div>
             <p className="text-sm font-bold text-gray-900">
-              {formatDate(post.scheduledDate, post.scheduledTime)}
+              {post.scheduled_date && post.scheduled_time
+                ? formatDate(post.scheduled_date, post.scheduled_time)
+                : "Not scheduled"}
             </p>
           </div>
           <div className="rounded-[32px] bg-white p-5 shadow-sm border border-gray-50 hover:shadow-md hover:-translate-y-0.5 transition-all">

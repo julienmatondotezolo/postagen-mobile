@@ -3,18 +3,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
-import {
-  getAllPosts,
-  getAllMedia,
-  getAllPlans,
-  getMediaUrl,
-  type Post,
-  type MediaFile,
-  type Plan,
-} from "@/lib/db";
+import { getPlans, getPlan, type ApiPlan, type ApiPost } from "@/lib/api";
 
-interface PostWithContext extends Post {
-  media?: MediaFile;
+interface PostWithContext extends ApiPost {
   planName: string;
 }
 
@@ -61,31 +52,24 @@ export default function CalendarPage() {
 
   const loadData = async () => {
     try {
-      const [allPosts, allMedia, allPlans] = await Promise.all([
-        getAllPosts(),
-        getAllMedia(),
-        getAllPlans(),
-      ]);
+      const allPlans = await getPlans();
+      const allPosts: PostWithContext[] = [];
 
-      const mediaMap = new Map<string, MediaFile>(
-        allMedia.map((m) => [m.id, m])
-      );
+      for (const plan of allPlans) {
+        try {
+          const planData = await getPlan(plan.id);
+          for (const post of planData.posts) {
+            allPosts.push({
+              ...post,
+              planName: plan.name,
+            });
+          }
+        } catch {
+          // Skip plans that fail to load
+        }
+      }
 
-      // Build a map from postId -> planName
-      const postToPlan = new Map<string, string>();
-      allPlans.forEach((plan: Plan) => {
-        plan.postIds.forEach((pid) => {
-          postToPlan.set(pid, plan.name);
-        });
-      });
-
-      const enriched: PostWithContext[] = allPosts.map((post) => ({
-        ...post,
-        media: mediaMap.get(post.mediaId),
-        planName: postToPlan.get(post.id) || t("calendar.unassigned"),
-      }));
-
-      setPosts(enriched);
+      setPosts(allPosts);
     } catch (error) {
       console.error("Error loading calendar data:", error);
     } finally {
@@ -96,9 +80,11 @@ export default function CalendarPage() {
   const postsByDate = useMemo(() => {
     const map = new Map<string, PostWithContext[]>();
     posts.forEach((post) => {
-      const existing = map.get(post.scheduledDate) || [];
+      const date = post.scheduled_date || "";
+      if (!date) return;
+      const existing = map.get(date) || [];
       existing.push(post);
-      map.set(post.scheduledDate, existing);
+      map.set(date, existing);
     });
     return map;
   }, [posts]);
@@ -284,17 +270,16 @@ export default function CalendarPage() {
                 className="flex gap-4 rounded-2xl bg-white p-4 shadow-sm border border-gray-50 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
               >
                 {/* Thumbnail */}
-                {post.media ? (
+                {post.media_url ? (
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100 relative">
-                    {post.media.type === "image" ? (
+                    {post.media_type === "image" ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={getMediaUrl(post.media)}
+                        src={post.media_url}
                         alt=""
                         className="h-full w-full object-cover"
                       />
-                    ) : post.media.type === "video" && post.thumbnail ? (
-                      // Show video thumbnail
+                    ) : post.media_type === "video" && post.thumbnail ? (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -348,7 +333,7 @@ export default function CalendarPage() {
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-2">
                     <span className="text-xs font-bold text-[#8B5CF6]">
-                      {post.scheduledTime}
+                      {post.scheduled_time}
                     </span>
                     <span className="text-xs text-gray-300">•</span>
                     <span className="text-xs font-medium text-gray-400 truncate">
