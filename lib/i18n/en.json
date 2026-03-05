@@ -215,7 +215,8 @@
     "folderRenamed": "Folder renamed",
     "folderDeleted": "Folder deleted",
     "folderError": "Could not update folder",
-    "renameFolder": "Rename"
+    "renameFolder": "Rename",
+    "movedToFolder": "Moved to folder"
   },
   "auth": {
     "loginSubtitle": "Log in to continue",

@@ -122,16 +122,24 @@ export async function getMediaStats(): Promise<MediaStats> {
 
 export async function updateMediaFolder(
   id: string,
-  folder: "liked" | "unliked" | "unsorted"
+  folder?: "liked" | "unliked" | "unsorted",
+  folderId?: string
 ): Promise<MediaRecord> {
   const res = await fetch(`${API_BASE_URL}/api/media/${id}/folder`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ folder }),
+    body: JSON.stringify(folderId ? { folderId } : { folder }),
   });
   if (!res.ok) throw new Error("Failed to update folder");
   return res.json();
+}
+
+export async function bulkMoveToFolder(
+  ids: string[],
+  folderId: string
+): Promise<void> {
+  await Promise.all(ids.map((id) => updateMediaFolder(id, undefined, folderId)));
 }
 
 export async function deleteMedia(id: string): Promise<void> {

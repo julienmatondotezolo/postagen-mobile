@@ -215,7 +215,8 @@
     "folderRenamed": "Map hernoemd",
     "folderDeleted": "Map verwijderd",
     "folderError": "Kon map niet bijwerken",
-    "renameFolder": "Hernoemen"
+    "renameFolder": "Hernoemen",
+    "movedToFolder": "Verplaatst naar map"
   },
   "auth": {
     "loginSubtitle": "Log in om verder te gaan",

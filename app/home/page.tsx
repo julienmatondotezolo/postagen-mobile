@@ -60,11 +60,12 @@ export default function HomePage() {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
 
-    // Reset input so same file can be re-selected
+    // Copy files before resetting input
+    const files = Array.from(fileList);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     try {
-      const compressed = await compressFiles(Array.from(fileList));
+      const compressed = await compressFiles(files);
       if (compressed.length === 0) {
         toast.error(t("dashboard.uploadFailed"));
         return;

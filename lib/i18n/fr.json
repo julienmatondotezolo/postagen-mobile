@@ -215,7 +215,8 @@
     "folderRenamed": "Dossier renommé",
     "folderDeleted": "Dossier supprimé",
     "folderError": "Impossible de mettre à jour le dossier",
-    "renameFolder": "Renommer"
+    "renameFolder": "Renommer",
+    "movedToFolder": "Déplacé vers le dossier"
   },
   "auth": {
     "loginSubtitle": "Connectez-vous pour continuer",

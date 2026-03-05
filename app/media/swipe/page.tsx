@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getMedia, updateMediaFolder, type MediaRecord } from "@/lib/api";
+import { getMedia, getFolders, updateMediaFolder, type MediaRecord } from "@/lib/api";
 import SwipeCard from "@/components/SwipeCard";
 import { useI18n } from "@/lib/i18n";
 import toast from "react-hot-toast";
@@ -11,12 +11,40 @@ import toast from "react-hot-toast";
 export default function SwipePage() {
   const { t } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const folder = searchParams.get("folder") || "unsorted";
+  const folderId = searchParams.get("folderId");
+
+  // Get folder name for display
+  const { data: folders } = useQuery({
+    queryKey: ["folders"],
+    queryFn: getFolders,
+    enabled: !!folderId,
+  });
+
+  const folderName = folderId
+    ? folders?.find((f) => f.id === folderId)?.name ?? "..."
+    : folder === "unsorted"
+    ? t("media.unsorted")
+    : folder === "liked"
+    ? t("media.liked")
+    : folder === "unliked"
+    ? t("media.unliked")
+    : t("media.all");
+
   const { data: media, isLoading } = useQuery({
-    queryKey: ["media", "unsorted"],
-    queryFn: () => getMedia("unsorted", 200),
+    queryKey: ["media-swipe", folder, folderId],
+    queryFn: () => {
+      if (folderId) {
+        return getMedia(undefined, 200, 0).then((all) =>
+          all.filter((m) => (m as MediaRecord & { folder_id?: string }).folder_id === folderId)
+        );
+      }
+      return getMedia(folder, 200);
+    },
   });
 
   const handleSwipe = useCallback(
@@ -24,15 +52,16 @@ export default function SwipePage() {
       if (!media || currentIndex >= media.length) return;
 
       const item = media[currentIndex];
-      const folder = direction === "right" ? "liked" : "unliked";
+      const targetFolder = direction === "right" ? "liked" : "unliked";
 
       setCurrentIndex((prev) => prev + 1);
 
       try {
-        await updateMediaFolder(item.id, folder);
-        // Invalidate caches
+        await updateMediaFolder(item.id, targetFolder);
         queryClient.invalidateQueries({ queryKey: ["media-stats"] });
         queryClient.invalidateQueries({ queryKey: ["media-recent"] });
+        queryClient.invalidateQueries({ queryKey: ["media"] });
+        queryClient.invalidateQueries({ queryKey: ["folders"] });
       } catch {
         toast.error(t("media.swipeError"));
       }
@@ -62,7 +91,7 @@ export default function SwipePage() {
         <div className="text-center">
           <h1 className="text-lg font-bold text-white">{t("media.swipeTitle")}</h1>
           <p className="text-xs text-white/50">
-            {remaining} {t("media.remaining")}
+            {folderName} — {remaining} {t("media.remaining")}
           </p>
         </div>
         <div className="w-10" />
