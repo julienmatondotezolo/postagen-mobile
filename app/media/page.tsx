@@ -157,6 +157,7 @@ export default function MediaPage() {
     setIsDeleting(true);
     try {
       await bulkDeleteMedia(Array.from(selectedIds));
+      haptics.success();
       toast.success(`${selectedIds.size} ${t("media.deleted")}`);
       setIsSelectionMode(false);
       setSelectedIds(new Set());
@@ -164,6 +165,7 @@ export default function MediaPage() {
       queryClient.invalidateQueries({ queryKey: ["media-stats"] });
       queryClient.invalidateQueries({ queryKey: ["folders"] });
     } catch {
+      haptics.error();
       toast.error(t("media.deleteError"));
     } finally {
       setIsDeleting(false);
@@ -179,9 +181,11 @@ export default function MediaPage() {
       setNewFolderColor(FOLDER_COLORS[0]);
       setShowCreateFolder(false);
       queryClient.invalidateQueries({ queryKey: ["folders"] });
+      haptics.success();
       toast.success(t("media.folderCreated"));
       setActiveFolder({ type: "custom", folderId: folder.id });
     } catch {
+      haptics.error();
       toast.error(t("media.folderError"));
     }
   };
@@ -193,8 +197,10 @@ export default function MediaPage() {
       setRenamingFolder(null);
       setRenameValue("");
       queryClient.invalidateQueries({ queryKey: ["folders"] });
+      haptics.success();
       toast.success(t("media.folderRenamed"));
     } catch {
+      haptics.error();
       toast.error(t("media.folderError"));
     }
   };
@@ -210,8 +216,10 @@ export default function MediaPage() {
       queryClient.invalidateQueries({ queryKey: ["folders"] });
       queryClient.invalidateQueries({ queryKey: ["media"] });
       queryClient.invalidateQueries({ queryKey: ["media-stats"] });
+      haptics.success();
       toast.success(t("media.folderDeleted"));
     } catch {
+      haptics.error();
       toast.error(t("media.folderError"));
     } finally {
       setIsDeletingFolder(false);
@@ -229,6 +237,7 @@ export default function MediaPage() {
         isActive: status?.is_active ?? true,
       });
     } catch {
+      haptics.error();
       toast.error(t("media.shareError"));
     }
   };
@@ -242,6 +251,7 @@ export default function MediaPage() {
       setShareModal({ ...shareModal, isActive: result.is_active });
       toast.success(result.is_active ? t("media.shareActivated") : t("media.shareDeactivated"));
     } catch {
+      haptics.error();
       toast.error(t("media.shareError"));
     } finally {
       setIsTogglingShare(false);
@@ -285,11 +295,13 @@ export default function MediaPage() {
       queryClient.invalidateQueries({ queryKey: ["media"] });
       queryClient.invalidateQueries({ queryKey: ["media-stats"] });
       queryClient.invalidateQueries({ queryKey: ["folders"] });
+      haptics.success();
       toast.success(t("media.movedToFolder"));
     } catch {
+      haptics.error();
       toast.error(t("media.folderError"));
     }
-  }, [queryClient, t]);
+  }, [queryClient, t, haptics]);
 
   const handleDragEnd = useCallback(() => {
     setDraggingId(null);
@@ -634,7 +646,7 @@ export default function MediaPage() {
       {/* FAB — go to swipe (within current folder) */}
       {!isSelectionMode && (
         <button
-          onClick={handleSwipeNav}
+          onClick={() => { haptics.tap(); handleSwipeNav(); }}
           className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-xl shadow-purple-300/50 transition-all hover:scale-110 active:scale-95"
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -677,6 +689,7 @@ export default function MediaPage() {
               type="text"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
+              onFocus={() => haptics.tap()}
               placeholder={t("media.folderNamePlaceholder")}
               className="mb-4 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-purple-500 focus:outline-none"
               autoFocus
@@ -752,6 +765,7 @@ export default function MediaPage() {
               type="text"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
+              onFocus={() => haptics.tap()}
               className="mb-6 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-purple-500 focus:outline-none"
               autoFocus
               onKeyDown={(e) => e.key === "Enter" && handleRenameFolder()}

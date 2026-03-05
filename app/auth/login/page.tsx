@@ -4,10 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const { t } = useI18n();
+  const haptics = useHaptics();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,8 +23,11 @@ export default function LoginPage() {
 
     const result = await login(email, password);
     if (result.error) {
+      haptics.error();
       setError(result.error);
       setIsSubmitting(false);
+    } else {
+      haptics.success();
     }
   }
 
@@ -48,6 +53,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onFocus={() => haptics.tap()}
                 placeholder={t("auth.emailPlaceholder")}
                 required
                 autoComplete="email"
@@ -64,6 +70,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => haptics.tap()}
                   placeholder={t("auth.passwordPlaceholder")}
                   required
                   autoComplete="current-password"

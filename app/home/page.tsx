@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n";
 import { useUpload } from "@/lib/upload";
+import { useHaptics } from "@/lib/haptics";
 import FolderSelectModal from "@/components/FolderSelectModal";
 
 interface DeleteModalState {
@@ -22,6 +23,7 @@ export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const upload = useUpload();
+  const haptics = useHaptics();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFolderSelect, setShowFolderSelect] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -72,6 +74,7 @@ export default function HomePage() {
       });
       setCompressProgress(null);
       if (compressed.length === 0) {
+        haptics.error();
         toast.error(t("dashboard.uploadFailed"));
         return;
       }
@@ -80,6 +83,7 @@ export default function HomePage() {
     } catch (error) {
       setCompressProgress(null);
       console.error("Compress error:", error);
+      haptics.error();
       toast.error(t("dashboard.uploadFailed"));
     }
   };
@@ -106,10 +110,12 @@ export default function HomePage() {
     try {
       await deletePlanApi(deleteModal.plan.id);
       queryClient.invalidateQueries({ queryKey: ["plans"] });
+      haptics.success();
       toast.success(t("home.planDeleted"));
       setDeleteModal({ isOpen: false, plan: null });
     } catch (error) {
       console.error("Error deleting plan:", error);
+      haptics.error();
       toast.error(t("home.deleteError"));
     } finally {
       setIsDeleting(false);
@@ -221,7 +227,7 @@ export default function HomePage() {
           {/* Create New Plan CTA */}
           <div className="mb-8">
             <button
-              onClick={() => router.push("/create")}
+              onClick={() => { haptics.tap(); router.push("/create"); }}
               className="w-full rounded-[24px] bg-linear-to-br from-purple-500 via-purple-600 to-indigo-600 p-5 text-left shadow-xl shadow-purple-200/50 transition-all hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] group"
             >
               <div className="flex items-center justify-between">
@@ -498,7 +504,7 @@ export default function HomePage() {
 
             <div className="space-y-3">
               <button
-                onClick={handleConfirmDelete}
+                onClick={() => { haptics.error(); handleConfirmDelete(); }}
                 disabled={isDeleting}
                 className="w-full rounded-2xl bg-red-500 py-4 text-sm font-bold text-white shadow-lg shadow-red-100 transition-all hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2"
               >

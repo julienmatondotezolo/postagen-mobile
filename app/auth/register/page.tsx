@@ -4,10 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 export default function RegisterPage() {
   const { register } = useAuth();
   const { t } = useI18n();
+  const haptics = useHaptics();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,11 +24,13 @@ export default function RegisterPage() {
     setError("");
 
     if (password.length < 8) {
+      haptics.error();
       setError(t("auth.passwordMin"));
       return;
     }
 
     if (password !== confirmPassword) {
+      haptics.error();
       setError(t("auth.passwordMismatch"));
       return;
     }
@@ -34,8 +38,11 @@ export default function RegisterPage() {
     setIsSubmitting(true);
     const result = await register(email, password, username || undefined);
     if (result.error) {
+      haptics.error();
       setError(result.error);
       setIsSubmitting(false);
+    } else {
+      haptics.success();
     }
   }
 
@@ -61,6 +68,7 @@ export default function RegisterPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                onFocus={() => haptics.tap()}
                 placeholder={t("auth.usernamePlaceholder")}
                 autoComplete="name"
                 className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-4 py-3.5 text-sm text-gray-900 outline-none transition-all focus:border-purple-300 focus:ring-2 focus:ring-purple-100"
@@ -75,6 +83,7 @@ export default function RegisterPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onFocus={() => haptics.tap()}
                 placeholder={t("auth.emailPlaceholder")}
                 required
                 autoComplete="email"
@@ -91,6 +100,7 @@ export default function RegisterPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => haptics.tap()}
                   placeholder={t("auth.passwordPlaceholder")}
                   required
                   autoComplete="new-password"
@@ -124,6 +134,7 @@ export default function RegisterPage() {
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  onFocus={() => haptics.tap()}
                   placeholder={t("auth.confirmPasswordPlaceholder")}
                   required
                   autoComplete="new-password"

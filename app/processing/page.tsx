@@ -11,7 +11,9 @@ import {
 import { createPlanApi, addPostsToPlanApi } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
+import confetti from "canvas-confetti";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 function getAnalysisSteps(t: (key: string) => string) {
   return [
@@ -89,6 +91,7 @@ function extFromMime(mime: string): string {
 export default function Processing() {
   const { t } = useI18n();
   const router = useRouter();
+  const haptics = useHaptics();
   const ANALYSIS_STEPS = getAnalysisSteps(t);
   const [progress, setProgress] = useState(0);
   const [currentStepText, setCurrentStepText] = useState(ANALYSIS_STEPS[0].text);
@@ -206,6 +209,7 @@ export default function Processing() {
           method: "POST",
           body: formData,
           signal: controller.signal,
+          credentials: "include",
         });
 
         clearTimeout(timeoutId);
@@ -304,11 +308,20 @@ export default function Processing() {
       sessionStorage.removeItem("postagen-mediaIds");
       sessionStorage.removeItem("postagen-addToPlanId");
 
+      // Celebration
+      haptics.magic();
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 }, colors: ["#8B5CF6", "#FFD700", "#EC4899", "#A855F7"] });
+      setTimeout(() => {
+        confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 }, colors: ["#8B5CF6", "#FFD700"] });
+        confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 }, colors: ["#EC4899", "#A855F7"] });
+      }, 250);
+
       setTimeout(() => {
         router.push(`/plan/${newPlan.id}`);
       }, 800);
     },
     onError: (error: Error) => {
+      haptics.error();
       toast.error(error.message || t("processing.error"), {
         duration: 6000,
       });
@@ -395,7 +408,7 @@ export default function Processing() {
             </p>
             <div className="space-y-3">
               <button
-                onClick={handleRetry}
+                onClick={() => { haptics.tap(); handleRetry(); }}
                 className="w-full rounded-2xl bg-[#8B5CF6] px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-200 transition-all hover:bg-purple-600 hover:shadow-2xl hover:shadow-purple-300 hover:-translate-y-0.5 active:scale-[0.98]"
               >
                 {t("common.retry")}

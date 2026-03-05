@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { API_BASE_URL } from "@/lib/config";
 import { changePassword, getStorageUsage } from "@/lib/api";
+import { useHaptics } from "@/lib/haptics";
 import toast from "react-hot-toast";
 
 interface BrandIdentity {
@@ -19,6 +20,7 @@ export default function ProfilePage() {
   const { t } = useI18n();
   const { user, logout } = useAuth();
   const router = useRouter();
+  const haptics = useHaptics();
   const [brandIdentity, setBrandIdentity] = useState<BrandIdentity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -42,22 +44,26 @@ export default function ProfilePage() {
 
   const handleChangePassword = async () => {
     if (newPw.length < 8) {
+      haptics.error();
       toast.error(t("auth.passwordMin"));
       return;
     }
     if (newPw !== confirmPw) {
+      haptics.error();
       toast.error(t("auth.passwordMismatch"));
       return;
     }
     setIsChangingPw(true);
     try {
       await changePassword(currentPw, newPw);
+      haptics.success();
       toast.success(t("profile.passwordChanged"));
       setShowPasswordModal(false);
       setCurrentPw("");
       setNewPw("");
       setConfirmPw("");
     } catch (error) {
+      haptics.error();
       toast.error(error instanceof Error ? error.message : t("processing.error"));
     } finally {
       setIsChangingPw(false);
@@ -242,7 +248,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="h-px bg-gray-100" />
                 <button
-                  onClick={() => setShowPasswordModal(true)}
+                  onClick={() => { haptics.tap(); setShowPasswordModal(true); }}
                   className="flex w-full items-center justify-between py-1"
                 >
                   <span className="text-sm text-gray-600">{t("profile.changePassword")}</span>
@@ -320,6 +326,7 @@ export default function ProfilePage() {
                   type="password"
                   value={currentPw}
                   onChange={(e) => setCurrentPw(e.target.value)}
+                  onFocus={() => haptics.tap()}
                   className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-purple-500 focus:outline-none"
                 />
               </div>
@@ -331,6 +338,7 @@ export default function ProfilePage() {
                   type="password"
                   value={newPw}
                   onChange={(e) => setNewPw(e.target.value)}
+                  onFocus={() => haptics.tap()}
                   placeholder={t("auth.passwordPlaceholder")}
                   className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-purple-500 focus:outline-none"
                 />
@@ -343,6 +351,7 @@ export default function ProfilePage() {
                   type="password"
                   value={confirmPw}
                   onChange={(e) => setConfirmPw(e.target.value)}
+                  onFocus={() => haptics.tap()}
                   placeholder={t("auth.confirmPasswordPlaceholder")}
                   className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:border-purple-500 focus:outline-none"
                 />

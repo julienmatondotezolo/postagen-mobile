@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import toast from "react-hot-toast";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 // Generate 7 days starting from today
 const generateDays = () => {
@@ -47,6 +48,7 @@ export default function VisualPlan() {
   const { t } = useI18n();
   const router = useRouter();
   const params = useParams();
+  const haptics = useHaptics();
   const planId = params.id as string;
 
   const [plan, setPlan] = useState<ApiPlan | null>(null);
@@ -143,10 +145,12 @@ export default function VisualPlan() {
     setIsDeleting(true);
     try {
       await deletePlanApi(plan.id);
+      haptics.error();
       toast.success(t("home.planDeleted"));
       router.push("/home");
     } catch (error) {
       console.error("Error deleting plan:", error);
+      haptics.error();
       toast.error(t("home.deleteError"));
     } finally {
       setIsDeleting(false);
@@ -164,12 +168,14 @@ export default function VisualPlan() {
     if (!editingPostId) return;
     try {
       await updatePostApi(editingPostId, { caption: editedCaption });
+      haptics.success();
       toast.success(t("common.save"));
       setEditingPostId(null);
       setEditedCaption("");
       await loadPlan();
     } catch (error) {
       console.error("Error updating post:", error);
+      haptics.error();
       toast.error(t("processing.error"));
     }
   };
@@ -190,12 +196,14 @@ export default function VisualPlan() {
     setIsDeletingPost(true);
     try {
       await deletePostApi(postToDelete);
+      haptics.error();
       toast.success(t("common.delete"));
       setShowDeletePostModal(false);
       setPostToDelete(null);
       await loadPlan();
     } catch (error) {
       console.error("Error deleting post:", error);
+      haptics.error();
       toast.error(t("processing.error"));
     } finally {
       setIsDeletingPost(false);
@@ -286,7 +294,7 @@ export default function VisualPlan() {
             {/* Left Arrow */}
             {showLeftArrow && (
               <button
-                onClick={() => handleScroll("left")}
+                onClick={() => { haptics.tap(); handleScroll("left"); }}
                 className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-all active:scale-95"
                 aria-label="Scroll left"
               >
@@ -321,7 +329,7 @@ export default function VisualPlan() {
                 return (
                   <button
                     key={`${day.label}-${index}`}
-                    onClick={() => setSelectedDate(day.date)}
+                    onClick={() => { haptics.tap(); setSelectedDate(day.date); }}
                     className={`shrink-0 flex flex-col items-center justify-center w-16 h-24 rounded-[32px] transition-all hover:scale-105 ${
                       isSelected
                         ? "bg-black text-white shadow-xl shadow-gray-200"
@@ -372,7 +380,7 @@ export default function VisualPlan() {
             {/* Right Arrow */}
             {showRightArrow && (
               <button
-                onClick={() => handleScroll("right")}
+                onClick={() => { haptics.tap(); handleScroll("right"); }}
                 className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-all active:scale-95"
                 aria-label="Scroll right"
               >
@@ -567,6 +575,7 @@ export default function VisualPlan() {
                           <textarea
                             value={editedCaption}
                             onChange={(e) => setEditedCaption(e.target.value)}
+                            onFocus={() => haptics.tap()}
                             className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-purple-500 focus:outline-none transition-all resize-none"
                             rows={4}
                           />

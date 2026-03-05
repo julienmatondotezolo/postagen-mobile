@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFolders, createFolder, type Folder } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 interface FolderSelectModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export default function FolderSelectModal({
 }: FolderSelectModalProps) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  const haptics = useHaptics();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -74,7 +76,7 @@ export default function FolderSelectModal({
         <div className="flex-1 overflow-y-auto px-6 space-y-2">
           {/* Unsorted option */}
           <button
-            onClick={() => onSelect("")}
+            onClick={() => { haptics.tap(); onSelect(""); }}
             className="flex w-full items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3.5 text-left transition-all hover:bg-gray-100 active:scale-[0.98]"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-200">
@@ -94,7 +96,7 @@ export default function FolderSelectModal({
           {folders.map((folder: Folder) => (
             <button
               key={folder.id}
-              onClick={() => onSelect(folder.id)}
+              onClick={() => { haptics.tap(); onSelect(folder.id); }}
               className="flex w-full items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3.5 text-left transition-all hover:bg-gray-100 active:scale-[0.98]"
             >
               <div
@@ -126,6 +128,7 @@ export default function FolderSelectModal({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                onFocus={() => haptics.tap()}
                 placeholder={t("media.folderNamePlaceholder")}
                 className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
                 autoFocus

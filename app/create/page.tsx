@@ -7,6 +7,7 @@ import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 interface AnalyzeBrandResponse {
   businessName: string;
@@ -18,6 +19,7 @@ interface AnalyzeBrandResponse {
 export default function IdentitySetup() {
   const { t } = useI18n();
   const router = useRouter();
+  const haptics = useHaptics();
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [description, setDescription] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -57,6 +59,7 @@ export default function IdentitySetup() {
 
   const handleAnalyzeUrl = async () => {
     if (!websiteUrl.trim() && !description.trim()) {
+      haptics.error();
       toast.error(t("create.noInput"));
       return;
     }
@@ -79,6 +82,7 @@ export default function IdentitySetup() {
         const msg =
           errorData?.message ||
           t("create.analyzeError");
+        haptics.error();
         toast.error(msg, { duration: 5000 });
         return;
       }
@@ -95,8 +99,10 @@ export default function IdentitySetup() {
     } catch (error) {
       console.error("Error analyzing brand:", error);
       if (error instanceof DOMException && error.name === "AbortError") {
+        haptics.error();
         toast.error(t("create.analyzeTimeout"), { duration: 5000 });
       } else {
+        haptics.error();
         toast.error(t("create.serverError"), { duration: 5000 });
       }
     } finally {
@@ -138,6 +144,7 @@ export default function IdentitySetup() {
       router.push("/upload");
     } catch (error) {
       console.error("Error saving brand identity:", error);
+      haptics.error();
       toast.error(t("create.saveError"));
     } finally {
       setIsSaving(false);
@@ -232,6 +239,7 @@ export default function IdentitySetup() {
               type="url"
               value={websiteUrl}
               onChange={(e) => setWebsiteUrl(e.target.value)}
+              onFocus={() => haptics.tap()}
               placeholder={t("create.websitePlaceholder")}
               disabled={isAnalyzing}
               className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-12 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
@@ -282,6 +290,7 @@ export default function IdentitySetup() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            onFocus={() => haptics.tap()}
             placeholder={t("create.descPlaceholder")}
             rows={6}
             className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-4 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
@@ -315,7 +324,7 @@ export default function IdentitySetup() {
 
         {/* Continue Button */}
         <button
-          onClick={handleContinue}
+          onClick={() => { haptics.success(); handleContinue(); }}
           disabled={isSaving || isAnalyzing || !isFormValid}
           className="w-full rounded-2xl bg-[#8B5CF6] px-6 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-200 transition-all hover:bg-purple-600 hover:shadow-2xl hover:shadow-purple-300 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >

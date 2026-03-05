@@ -62,10 +62,11 @@ export default function SwipePage() {
         queryClient.invalidateQueries({ queryKey: ["media"] });
         queryClient.invalidateQueries({ queryKey: ["folders"] });
       } catch {
+        haptics.error();
         toast.error(t("media.swipeError"));
       }
     },
-    [media, currentIndex, queryClient, t]
+    [media, currentIndex, queryClient, t, haptics]
   );
 
   const handleUndo = useCallback(async () => {
@@ -82,9 +83,10 @@ export default function SwipePage() {
       queryClient.invalidateQueries({ queryKey: ["media"] });
       queryClient.invalidateQueries({ queryKey: ["folders"] });
     } catch {
+      haptics.error();
       toast.error(t("media.swipeError"));
     }
-  }, [queryClient, t]);
+  }, [queryClient, t, haptics]);
 
   const remaining = media ? media.length - currentIndex : 0;
   const visibleCards = media?.slice(currentIndex, currentIndex + 2) ?? [];

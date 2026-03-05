@@ -83,10 +83,11 @@ export default function ShareSwipePage() {
           vote,
         });
       } catch {
+        haptics.error();
         toast.error(t("share.voteError"));
       }
     },
-    [unvotedMedia, currentIndex, token, voterName, t]
+    [unvotedMedia, currentIndex, token, voterName, t, haptics]
   );
 
   const handleUndo = useCallback(() => {

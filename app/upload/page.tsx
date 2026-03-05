@@ -6,6 +6,7 @@ import { saveMedia, clearAllMedia, type MediaFile } from "@/lib/db";
 import { getMedia, getFolders, type MediaRecord, type Folder } from "@/lib/api";
 import toast, { Toaster } from "react-hot-toast";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 import { useQuery } from "@tanstack/react-query";
 
 async function compressImage(file: File, maxDimension: number = 1920, quality: number = 0.8): Promise<File> {
@@ -65,6 +66,7 @@ const MAX_FILES = 250;
 export default function MediaUpload() {
   const { t } = useI18n();
   const router = useRouter();
+  const haptics = useHaptics();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>("upload");
@@ -178,7 +180,8 @@ export default function MediaUpload() {
         }
 
         if (temporaryFiles.length + newFiles.length >= MAX_FILES) {
-          toast.error(t("upload.maxFiles"));
+          haptics.error();
+        toast.error(t("upload.maxFiles"));
           break;
         }
 
@@ -193,10 +196,12 @@ export default function MediaUpload() {
         toast.success(`Added ${successCount} file${successCount > 1 ? 's' : ''}`);
       }
       if (failCount > 0) {
+        haptics.error();
         toast.error(`Failed: ${failedFiles.slice(0, 2).join(', ')}${failedFiles.length > 2 ? '...' : ''}`, { duration: 5000 });
       }
     } catch (error) {
       console.error("Error processing media:", error);
+      haptics.error();
       toast.error("An unexpected error occurred");
     } finally {
       setIsLoading(false);
@@ -289,6 +294,7 @@ export default function MediaUpload() {
       newUrls.delete(media.id);
     } else {
       if (totalSelected >= MAX_FILES) {
+        haptics.error();
         toast.error(t("upload.maxFiles"));
         return;
       }
@@ -330,6 +336,7 @@ export default function MediaUpload() {
       router.push("/context");
     } catch (error) {
       console.error("Error saving media:", error);
+      haptics.error();
       toast.error(t("upload.saveError"), { id: "saving" });
       setIsLoading(false);
       isGeneratingRef.current = false;
@@ -367,7 +374,7 @@ export default function MediaUpload() {
           {/* Tab Switcher */}
           <div className="mb-6 flex rounded-2xl bg-gray-100 p-1">
             <button
-              onClick={() => setActiveTab("upload")}
+              onClick={() => { haptics.tap(); setActiveTab("upload"); }}
               className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
                 activeTab === "upload"
                   ? "bg-white text-gray-900 shadow-sm"
@@ -377,7 +384,7 @@ export default function MediaUpload() {
               {t("upload.tabUpload")}
             </button>
             <button
-              onClick={() => setActiveTab("library")}
+              onClick={() => { haptics.tap(); setActiveTab("library"); }}
               className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
                 activeTab === "library"
                   ? "bg-white text-gray-900 shadow-sm"
@@ -647,7 +654,7 @@ export default function MediaUpload() {
 
             {/* Continue Button */}
             <button
-              onClick={(e) => { e.stopPropagation(); handleContinue(); }}
+              onClick={(e) => { e.stopPropagation(); haptics.success(); handleContinue(); }}
               disabled={totalSelected === 0 || isLoading}
               className="w-full rounded-2xl bg-gray-900 px-6 py-4 text-lg font-semibold text-white shadow-xl transition-all hover:bg-black hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >

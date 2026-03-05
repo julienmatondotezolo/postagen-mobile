@@ -4,10 +4,12 @@ import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getPost, updatePostApi, type ApiPost } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 export default function PostDetail() {
   const { t } = useI18n();
   const router = useRouter();
+  const haptics = useHaptics();
   const params = useParams();
   const postId = params.id as string;
   const [post, setPost] = useState<ApiPost | null>(null);
@@ -34,6 +36,7 @@ export default function PostDetail() {
     if (!post) return;
     try {
       await updatePostApi(post.id, { caption: editedCaption });
+      haptics.success();
       setIsEditing(false);
       await loadPost();
     } catch (error) {
@@ -48,6 +51,7 @@ export default function PostDetail() {
 
     try {
       await navigator.clipboard.writeText(fullText);
+      haptics.success();
 
       if (platform === "instagram") {
         window.open("https://www.instagram.com/", "_blank");
@@ -195,7 +199,7 @@ export default function PostDetail() {
             </span>
             {!isEditing ? (
               <button
-                onClick={() => setIsEditing(true)}
+                onClick={() => { haptics.tap(); setIsEditing(true); }}
                 className="flex items-center gap-1.5 text-sm font-bold text-purple-600"
               >
                 <svg
@@ -226,6 +230,7 @@ export default function PostDetail() {
             <textarea
               value={editedCaption}
               onChange={(e) => setEditedCaption(e.target.value)}
+              onFocus={() => haptics.tap()}
               className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-purple-500 focus:outline-none transition-all hover:border-purple-200"
               rows={4}
             />

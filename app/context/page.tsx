@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 const QUICK_CHIPS = [
   { key: "liveMusic", emoji: "🎵" },
@@ -22,6 +23,7 @@ const LANGUAGES = [
 export default function ContextPage() {
   const { t } = useI18n();
   const router = useRouter();
+  const haptics = useHaptics();
   const [language, setLanguage] = useState<"nl" | "fr" | "en">("nl");
   const [weeklyContext, setWeeklyContext] = useState("");
   const [specialMessage, setSpecialMessage] = useState("");
@@ -96,7 +98,7 @@ export default function ContextPage() {
             {LANGUAGES.map((lang) => (
               <button
                 key={lang.code}
-                onClick={() => setLanguage(lang.code)}
+                onClick={() => { haptics.tap(); setLanguage(lang.code); }}
                 className={`flex-1 rounded-2xl py-3 text-sm font-bold transition-all ${
                   language === lang.code
                     ? "bg-purple-500 text-white shadow-lg shadow-purple-200"
@@ -117,6 +119,7 @@ export default function ContextPage() {
           <textarea
             value={weeklyContext}
             onChange={(e) => setWeeklyContext(e.target.value)}
+            onFocus={() => haptics.tap()}
             placeholder={t("context.eventsPlaceholder")}
             rows={3}
             className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
@@ -129,7 +132,7 @@ export default function ContextPage() {
               return (
                 <button
                   key={chip.key}
-                  onClick={() => handleChipToggle(label)}
+                  onClick={() => { haptics.tap(); handleChipToggle(label); }}
                   className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
                     isActive
                       ? "bg-purple-100 text-purple-700 ring-1 ring-purple-300"
@@ -151,6 +154,7 @@ export default function ContextPage() {
           <textarea
             value={specialMessage}
             onChange={(e) => setSpecialMessage(e.target.value)}
+            onFocus={() => haptics.tap()}
             placeholder={t("context.messagePlaceholder")}
             rows={3}
             className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 resize-none"
@@ -162,7 +166,7 @@ export default function ContextPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-linear-to-t from-mood-upload via-mood-upload to-transparent pt-6 pb-12 px-6 pointer-events-none">
         <div className="mx-auto max-w-md pointer-events-auto">
           <button
-            onClick={handleGenerate}
+            onClick={() => { haptics.success(); handleGenerate(); }}
             disabled={isNavigating}
             className="w-full rounded-2xl bg-gray-900 px-6 py-4 text-lg font-semibold text-white shadow-xl transition-all hover:bg-black hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
           >

@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 import { getPlans, getPlan, type ApiPlan, type ApiPost } from "@/lib/api";
 
 interface PostWithContext extends ApiPost {
@@ -31,6 +32,7 @@ function formatDateKey(date: Date): string {
 
 export default function CalendarPage() {
   const { t } = useI18n();
+  const haptics = useHaptics();
   const DAY_LABELS = [t("calendar.mon"), t("calendar.tue"), t("calendar.wed"), t("calendar.thu"), t("calendar.fri"), t("calendar.sat"), t("calendar.sun")];
   const router = useRouter();
   const [posts, setPosts] = useState<PostWithContext[]>([]);
@@ -123,7 +125,7 @@ export default function CalendarPage() {
         {/* Week Navigation */}
         <div className="mb-6 flex items-center justify-between">
           <button
-            onClick={() => setWeekOffset((o) => o - 1)}
+            onClick={() => { haptics.tap(); setWeekOffset((o) => o - 1); }}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition-all"
           >
             <svg
@@ -144,7 +146,7 @@ export default function CalendarPage() {
             {monthLabel}
           </span>
           <button
-            onClick={() => setWeekOffset((o) => o + 1)}
+            onClick={() => { haptics.tap(); setWeekOffset((o) => o + 1); }}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm hover:bg-gray-50 transition-all"
           >
             <svg
@@ -175,7 +177,7 @@ export default function CalendarPage() {
             return (
               <button
                 key={dateKey}
-                onClick={() => setSelectedDate(dateKey)}
+                onClick={() => { haptics.tap(); setSelectedDate(dateKey); }}
                 className={`flex flex-col items-center justify-center rounded-2xl py-3 transition-all ${
                   isSelected
                     ? "bg-[#8B5CF6] text-white shadow-lg shadow-purple-200"
