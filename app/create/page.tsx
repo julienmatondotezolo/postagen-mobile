@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { saveBrandIdentity } from "@/lib/db";
 import { API_BASE_URL } from "@/lib/config";
+import { apiFetch } from "@/lib/api";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n";
@@ -31,9 +32,7 @@ export default function IdentitySetup() {
   useEffect(() => {
     const checkBrand = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/brand-identity`, {
-          credentials: "include",
-        });
+        const res = await apiFetch(`${API_BASE_URL}/api/brand-identity`);
         if (res.ok) {
           const data = await res.json();
           if (data.brandIdentity) {
@@ -70,7 +69,7 @@ export default function IdentitySetup() {
       if (websiteUrl.trim()) payload.url = websiteUrl.trim();
       if (description.trim()) payload.description = description.trim();
 
-      const res = await fetch(`${API_BASE_URL}/api/brand/analyze`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/brand/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -118,10 +117,9 @@ export default function IdentitySetup() {
     setIsSaving(true);
     try {
       // Save to API (database)
-      const res = await fetch(`${API_BASE_URL}/api/brand-identity`, {
+      const res = await apiFetch(`${API_BASE_URL}/api/brand-identity`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           businessName: businessName || undefined,
           websiteUrl: websiteUrl || undefined,

@@ -8,7 +8,7 @@ import {
   getBrandIdentity,
   updateMedia,
 } from "@/lib/db";
-import { createPlanApi, addPostsToPlanApi } from "@/lib/api";
+import { createPlanApi, addPostsToPlanApi, apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
@@ -205,11 +205,10 @@ export default function Processing() {
       const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/generate`, {
+        const response = await apiFetch(`${API_BASE_URL}/api/generate`, {
           method: "POST",
           body: formData,
           signal: controller.signal,
-          credentials: "include",
         });
 
         clearTimeout(timeoutId);

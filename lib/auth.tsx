@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/lib/config";
+import { apiFetch } from "@/lib/api";
 
 interface User {
   id: string;
@@ -50,9 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function checkAuth() {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`${API_BASE_URL}/api/auth/me`);
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
@@ -65,50 +64,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function login(email: string, password: string) {
-    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    const res = await apiFetch(`${API_BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({ email, password }),
     });
 
     const data = await res.json();
     if (!res.ok) return { error: data.error };
 
+    if (data.token) localStorage.setItem("postagen_token", data.token);
     setUser(data.user);
     router.replace(data.user.email_verified ? "/home" : "/auth/verify-required");
     return {};
   }
 
   async function register(email: string, password: string, username?: string) {
-    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    const res = await apiFetch(`${API_BASE_URL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "include",
       body: JSON.stringify({ email, password, username }),
     });
 
     const data = await res.json();
     if (!res.ok) return { error: data.error };
 
+    if (data.token) localStorage.setItem("postagen_token", data.token);
     setUser(data.user);
     router.replace("/auth/verify-required");
     return {};
   }
 
   async function logout() {
-    await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    await apiFetch(`${API_BASE_URL}/api/auth/logout`, {
       method: "POST",
-      credentials: "include",
     });
+    localStorage.removeItem("postagen_token");
     setUser(null);
     router.replace("/auth/login");
   }
 
   async function resendVerification() {
-    const res = await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
+    const res = await apiFetch(`${API_BASE_URL}/api/auth/resend-verification`, {
       method: "POST",
-      credentials: "include",
     });
 
     const data = await res.json();

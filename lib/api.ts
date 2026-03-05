@@ -1,5 +1,12 @@
 import { API_BASE_URL } from "./config";
 
+export function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("postagen_token") : null;
+  const headers = new Headers(options.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return fetch(url, { ...options, headers, credentials: "include" });
+}
+
 export interface MediaRecord {
   id: string;
   user_id: string;
@@ -75,7 +82,7 @@ export interface ApiPost {
 export async function uploadMedia(
   formData: FormData
 ): Promise<{ media: MediaRecord[]; count: number }> {
-  const res = await fetch(`${API_BASE_URL}/api/media/upload`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/media/upload`, {
     method: "POST",
     credentials: "include",
     body: formData,
@@ -91,7 +98,7 @@ export async function uploadSingleMedia(
   const formData = new FormData();
   formData.append("files", file);
   if (folderId) formData.append("folderId", folderId);
-  const res = await fetch(`${API_BASE_URL}/api/media/upload`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/media/upload`, {
     method: "POST",
     credentials: "include",
     body: formData,
@@ -116,7 +123,7 @@ export async function getMedia(opts?: {
   if (folderId) params.set("folderId", folderId);
   if (status) params.set("status", status);
 
-  const res = await fetch(`${API_BASE_URL}/api/media?${params}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/media?${params}`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch media");
@@ -125,7 +132,7 @@ export async function getMedia(opts?: {
 }
 
 export async function getMediaStats(): Promise<MediaStats> {
-  const res = await fetch(`${API_BASE_URL}/api/media/stats`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/media/stats`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch stats");
@@ -136,7 +143,7 @@ export async function updateMediaFolder(
   id: string,
   folderId?: string
 ): Promise<MediaRecord> {
-  const res = await fetch(`${API_BASE_URL}/api/media/${id}/folder`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/media/${id}/folder`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -150,7 +157,7 @@ export async function updateMediaStatus(
   id: string,
   status: "pending" | "liked" | "unliked"
 ): Promise<MediaRecord> {
-  const res = await fetch(`${API_BASE_URL}/api/media/${id}/status`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/media/${id}/status`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -161,7 +168,7 @@ export async function updateMediaStatus(
 }
 
 export async function deleteMedia(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/media/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/media/${id}`, {
     method: "DELETE",
     credentials: "include",
   });
@@ -170,7 +177,7 @@ export async function deleteMedia(id: string): Promise<void> {
 
 // Bulk delete media
 export async function bulkDeleteMedia(ids: string[]): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/media/bulk-delete`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/media/bulk-delete`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -181,7 +188,7 @@ export async function bulkDeleteMedia(ids: string[]): Promise<void> {
 
 // Folders
 export async function getFolders(): Promise<Folder[]> {
-  const res = await fetch(`${API_BASE_URL}/api/folders`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/folders`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch folders");
@@ -190,7 +197,7 @@ export async function getFolders(): Promise<Folder[]> {
 }
 
 export async function createFolder(name: string, color?: string): Promise<Folder> {
-  const res = await fetch(`${API_BASE_URL}/api/folders`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/folders`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -201,7 +208,7 @@ export async function createFolder(name: string, color?: string): Promise<Folder
 }
 
 export async function updateFolder(id: string, updates: { name?: string; color?: string }): Promise<Folder> {
-  const res = await fetch(`${API_BASE_URL}/api/folders/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/folders/${id}`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -215,15 +222,14 @@ export async function deleteFolder(id: string, withMedia?: boolean): Promise<voi
   const url = withMedia
     ? `${API_BASE_URL}/api/folders/${id}?withMedia=true`
     : `${API_BASE_URL}/api/folders/${id}`;
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     method: "DELETE",
-    credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to delete folder");
 }
 
 export async function getStorageUsage(): Promise<{ usedBytes: number; maxBytes: number }> {
-  const res = await fetch(`${API_BASE_URL}/api/media/storage`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/media/storage`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch storage usage");
@@ -232,7 +238,7 @@ export async function getStorageUsage(): Promise<{ usedBytes: number; maxBytes: 
 
 // Plans
 export async function getPlans(): Promise<ApiPlan[]> {
-  const res = await fetch(`${API_BASE_URL}/api/plans`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/plans`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch plans");
@@ -241,7 +247,7 @@ export async function getPlans(): Promise<ApiPlan[]> {
 }
 
 export async function getPlan(id: string): Promise<{ plan: ApiPlan; posts: ApiPost[] }> {
-  const res = await fetch(`${API_BASE_URL}/api/plans/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/plans/${id}`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch plan");
@@ -254,7 +260,7 @@ export async function createPlanApi(data: {
   status?: string;
   posts?: Array<Record<string, unknown>>;
 }): Promise<{ plan: ApiPlan; posts: ApiPost[] }> {
-  const res = await fetch(`${API_BASE_URL}/api/plans`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/plans`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -265,7 +271,7 @@ export async function createPlanApi(data: {
 }
 
 export async function updatePlanApi(id: string, updates: Record<string, unknown>): Promise<ApiPlan> {
-  const res = await fetch(`${API_BASE_URL}/api/plans/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/plans/${id}`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -279,7 +285,7 @@ export async function addPostsToPlanApi(
   planId: string,
   posts: Array<Record<string, unknown>>
 ): Promise<{ posts: ApiPost[] }> {
-  const res = await fetch(`${API_BASE_URL}/api/plans/${planId}/posts`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/plans/${planId}/posts`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -290,7 +296,7 @@ export async function addPostsToPlanApi(
 }
 
 export async function deletePlanApi(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/plans/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/plans/${id}`, {
     method: "DELETE",
     credentials: "include",
   });
@@ -299,7 +305,7 @@ export async function deletePlanApi(id: string): Promise<void> {
 
 // Posts
 export async function getPost(id: string): Promise<ApiPost> {
-  const res = await fetch(`${API_BASE_URL}/api/posts/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/posts/${id}`, {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch post");
@@ -307,7 +313,7 @@ export async function getPost(id: string): Promise<ApiPost> {
 }
 
 export async function updatePostApi(id: string, updates: Record<string, unknown>): Promise<ApiPost> {
-  const res = await fetch(`${API_BASE_URL}/api/posts/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/posts/${id}`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -318,7 +324,7 @@ export async function updatePostApi(id: string, updates: Record<string, unknown>
 }
 
 export async function deletePostApi(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/posts/${id}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/posts/${id}`, {
     method: "DELETE",
     credentials: "include",
   });
@@ -327,7 +333,7 @@ export async function deletePostApi(id: string): Promise<void> {
 
 // Share
 export async function shareFolder(folderId: string): Promise<{ share_token: string }> {
-  const res = await fetch(`${API_BASE_URL}/api/share/folder/${folderId}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/share/folder/${folderId}`, {
     method: "POST",
     credentials: "include",
   });
@@ -336,7 +342,7 @@ export async function shareFolder(folderId: string): Promise<{ share_token: stri
 }
 
 export async function getShareStatus(folderId: string): Promise<{ share_token: string; is_active: boolean } | null> {
-  const res = await fetch(`${API_BASE_URL}/api/share/folder/${folderId}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/share/folder/${folderId}`, {
     credentials: "include",
   });
   if (res.status === 404) return null;
@@ -345,7 +351,7 @@ export async function getShareStatus(folderId: string): Promise<{ share_token: s
 }
 
 export async function updateShareFolder(folderId: string, isActive: boolean): Promise<{ share_token: string; is_active: boolean }> {
-  const res = await fetch(`${API_BASE_URL}/api/share/folder/${folderId}`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/share/folder/${folderId}`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -361,7 +367,7 @@ export async function getSharedFolder(token: string): Promise<{
   media: MediaRecord[];
   shared_folder_id: string;
 }> {
-  const res = await fetch(`${API_BASE_URL}/api/share/public/${token}`);
+  const res = await apiFetch(`${API_BASE_URL}/api/share/public/${token}`);
   if (!res.ok) throw new Error("Share not found");
   return res.json();
 }
@@ -370,7 +376,7 @@ export async function submitShareVote(
   token: string,
   data: { voter_name: string; media_id: string; vote: "liked" | "unliked" }
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/share/public/${token}/vote`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/share/public/${token}/vote`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -382,7 +388,7 @@ export async function getShareVotes(
   token: string,
   voterName: string
 ): Promise<{ votes: Array<{ media_id: string; vote: string }> }> {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE_URL}/api/share/public/${token}/votes/${encodeURIComponent(voterName)}`
   );
   if (!res.ok) throw new Error("Failed to get votes");
@@ -391,7 +397,7 @@ export async function getShareVotes(
 
 // Auth
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
+  const res = await apiFetch(`${API_BASE_URL}/api/auth/change-password`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },

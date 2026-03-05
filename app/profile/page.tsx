@@ -6,7 +6,7 @@ import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { API_BASE_URL } from "@/lib/config";
-import { changePassword, getStorageUsage } from "@/lib/api";
+import { changePassword, getStorageUsage, apiFetch } from "@/lib/api";
 import { useHaptics } from "@/lib/haptics";
 import toast from "react-hot-toast";
 
@@ -73,9 +73,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const loadBrand = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/brand-identity`, {
-          credentials: "include",
-        });
+        const res = await apiFetch(`${API_BASE_URL}/api/brand-identity`);
         if (res.ok) {
           const data = await res.json();
           setBrandIdentity(data.brandIdentity || null);
