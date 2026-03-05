@@ -173,7 +173,9 @@
     "changePassword": "Change password",
     "currentPassword": "Current password",
     "newPassword": "New password",
-    "passwordChanged": "Password changed successfully"
+    "passwordChanged": "Password changed successfully",
+    "storage": "Storage",
+    "storageUsed": "{used} / {max}"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -216,7 +218,14 @@
     "folderDeleted": "Folder deleted",
     "folderError": "Could not update folder",
     "renameFolder": "Rename",
-    "movedToFolder": "Moved to folder"
+    "movedToFolder": "Moved to folder",
+    "pending": "Pending",
+    "selectFolderToSwipe": "Select a folder to start swiping",
+    "deleteFolderTitle": "Delete folder",
+    "deleteFolderKeep": "Keep media",
+    "deleteFolderKeepDesc": "Media will be moved to Unsorted",
+    "deleteFolderAll": "Delete folder and media",
+    "deleteFolderAllDesc": "All media will be permanently deleted"
   },
   "auth": {
     "loginSubtitle": "Log in to continue",

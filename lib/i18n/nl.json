@@ -173,7 +173,9 @@
     "changePassword": "Wachtwoord wijzigen",
     "currentPassword": "Huidig wachtwoord",
     "newPassword": "Nieuw wachtwoord",
-    "passwordChanged": "Wachtwoord succesvol gewijzigd"
+    "passwordChanged": "Wachtwoord succesvol gewijzigd",
+    "storage": "Opslag",
+    "storageUsed": "{used} / {max}"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -216,7 +218,14 @@
     "folderDeleted": "Map verwijderd",
     "folderError": "Kon map niet bijwerken",
     "renameFolder": "Hernoemen",
-    "movedToFolder": "Verplaatst naar map"
+    "movedToFolder": "Verplaatst naar map",
+    "pending": "In afwachting",
+    "selectFolderToSwipe": "Selecteer een map om te beginnen met swipen",
+    "deleteFolderTitle": "Map verwijderen",
+    "deleteFolderKeep": "Media behouden",
+    "deleteFolderKeepDesc": "Media wordt verplaatst naar Ongesorteerd",
+    "deleteFolderAll": "Map en media verwijderen",
+    "deleteFolderAllDesc": "Alle media wordt permanent verwijderd"
   },
   "auth": {
     "loginSubtitle": "Log in om verder te gaan",

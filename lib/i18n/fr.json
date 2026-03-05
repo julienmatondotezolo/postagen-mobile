@@ -173,7 +173,9 @@
     "changePassword": "Changer le mot de passe",
     "currentPassword": "Mot de passe actuel",
     "newPassword": "Nouveau mot de passe",
-    "passwordChanged": "Mot de passe modifié avec succès"
+    "passwordChanged": "Mot de passe modifié avec succès",
+    "storage": "Stockage",
+    "storageUsed": "{used} / {max}"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -216,7 +218,14 @@
     "folderDeleted": "Dossier supprimé",
     "folderError": "Impossible de mettre à jour le dossier",
     "renameFolder": "Renommer",
-    "movedToFolder": "Déplacé vers le dossier"
+    "movedToFolder": "Déplacé vers le dossier",
+    "pending": "En attente",
+    "selectFolderToSwipe": "Sélectionnez un dossier pour commencer à swiper",
+    "deleteFolderTitle": "Supprimer le dossier",
+    "deleteFolderKeep": "Garder les médias",
+    "deleteFolderKeepDesc": "Les médias seront déplacés vers Non trié",
+    "deleteFolderAll": "Supprimer le dossier et les médias",
+    "deleteFolderAllDesc": "Tous les médias seront supprimés définitivement"
   },
   "auth": {
     "loginSubtitle": "Connectez-vous pour continuer",

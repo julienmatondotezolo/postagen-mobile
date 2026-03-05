@@ -9,17 +9,24 @@ export interface MediaRecord {
   filename: string;
   size: number;
   mime_type: string;
-  folder: "unsorted" | "liked" | "unliked";
+  folder: "unsorted" | "custom";
+  folder_id: string | null;
+  status: "pending" | "liked" | "unliked";
   created_at: string;
   updated_at: string;
 }
 
-export interface MediaStats {
+export interface FolderStats {
   total: number;
-  unsorted: number;
+  pending: number;
   liked: number;
   unliked: number;
-  customFolders?: Record<string, number>;
+}
+
+export interface MediaStats {
+  total: number;
+  unsorted: FolderStats;
+  folders: Record<string, FolderStats>;
 }
 
 export interface Folder {
@@ -93,16 +100,21 @@ export async function uploadSingleMedia(
   return res.json();
 }
 
-export async function getMedia(
-  folder?: string,
-  limit = 50,
-  offset = 0
-): Promise<MediaRecord[]> {
+export async function getMedia(opts?: {
+  folder?: string;
+  folderId?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<MediaRecord[]> {
+  const { folder, folderId, status, limit = 50, offset = 0 } = opts || {};
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
   });
   if (folder) params.set("folder", folder);
+  if (folderId) params.set("folderId", folderId);
+  if (status) params.set("status", status);
 
   const res = await fetch(`${API_BASE_URL}/api/media?${params}`, {
     credentials: "include",
@@ -122,24 +134,30 @@ export async function getMediaStats(): Promise<MediaStats> {
 
 export async function updateMediaFolder(
   id: string,
-  folder?: "liked" | "unliked" | "unsorted",
   folderId?: string
 ): Promise<MediaRecord> {
   const res = await fetch(`${API_BASE_URL}/api/media/${id}/folder`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(folderId ? { folderId } : { folder }),
+    body: JSON.stringify({ folderId: folderId || null }),
   });
   if (!res.ok) throw new Error("Failed to update folder");
   return res.json();
 }
 
-export async function bulkMoveToFolder(
-  ids: string[],
-  folderId: string
-): Promise<void> {
-  await Promise.all(ids.map((id) => updateMediaFolder(id, undefined, folderId)));
+export async function updateMediaStatus(
+  id: string,
+  status: "pending" | "liked" | "unliked"
+): Promise<MediaRecord> {
+  const res = await fetch(`${API_BASE_URL}/api/media/${id}/status`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error("Failed to update status");
+  return res.json();
 }
 
 export async function deleteMedia(id: string): Promise<void> {
@@ -193,12 +211,23 @@ export async function updateFolder(id: string, updates: { name?: string; color?:
   return res.json();
 }
 
-export async function deleteFolder(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/folders/${id}`, {
+export async function deleteFolder(id: string, withMedia?: boolean): Promise<void> {
+  const url = withMedia
+    ? `${API_BASE_URL}/api/folders/${id}?withMedia=true`
+    : `${API_BASE_URL}/api/folders/${id}`;
+  const res = await fetch(url, {
     method: "DELETE",
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to delete folder");
+}
+
+export async function getStorageUsage(): Promise<{ usedBytes: number; maxBytes: number }> {
+  const res = await fetch(`${API_BASE_URL}/api/media/storage`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to fetch storage usage");
+  return res.json();
 }
 
 // Plans

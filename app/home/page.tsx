@@ -40,7 +40,7 @@ export default function HomePage() {
   // Recent media
   const { data: recentMedia } = useQuery({
     queryKey: ["media-recent"],
-    queryFn: () => getMedia("all", 8),
+    queryFn: () => getMedia({ limit: 8 }),
   });
 
   // Plans from API
@@ -197,7 +197,7 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stats?.liked ?? 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats ? (stats.unsorted.liked + Object.values(stats.folders || {}).reduce((sum, f) => sum + f.liked, 0)) : 0}</p>
               <p className="text-xs text-gray-500">{t("dashboard.liked")}</p>
             </div>
 
@@ -332,7 +332,7 @@ export default function HomePage() {
                       </div>
                     )}
                     {/* Folder indicator */}
-                    {media.folder === "liked" && (
+                    {media.status === "liked" && (
                       <div className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-pink-500">
                         <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />

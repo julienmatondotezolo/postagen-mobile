@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
 import { API_BASE_URL } from "@/lib/config";
-import { changePassword } from "@/lib/api";
+import { changePassword, getStorageUsage } from "@/lib/api";
 import toast from "react-hot-toast";
 
 interface BrandIdentity {
@@ -26,6 +27,18 @@ export default function ProfilePage() {
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [isChangingPw, setIsChangingPw] = useState(false);
+
+  const { data: storage } = useQuery({
+    queryKey: ["storage"],
+    queryFn: getStorageUsage,
+  });
+
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`;
+    if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(0)} MB`;
+    return `${(bytes / 1073741824).toFixed(1)} GB`;
+  };
 
   const handleChangePassword = async () => {
     if (newPw.length < 8) {
@@ -118,6 +131,31 @@ export default function ProfilePage() {
                       {t("auth.emailNotVerified")}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Storage Card */}
+            {storage && (
+              <div className="rounded-[32px] bg-white p-6 shadow-sm border border-gray-50">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50">
+                    <svg className="h-5 w-5 text-[#8B5CF6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-lg font-bold text-gray-900">{t("profile.storage")}</h2>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-3 w-full overflow-hidden rounded-full bg-purple-100">
+                    <div
+                      className="h-full rounded-full bg-[#8B5CF6] transition-all"
+                      style={{ width: `${Math.min((storage.usedBytes / storage.maxBytes) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {t("profile.storageUsed").replace("{used}", formatBytes(storage.usedBytes)).replace("{max}", formatBytes(storage.maxBytes))}
+                  </p>
                 </div>
               </div>
             )}
