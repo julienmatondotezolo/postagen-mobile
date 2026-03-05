@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { saveBrandIdentity, getBrandIdentity } from "@/lib/db";
+import { saveBrandIdentity } from "@/lib/db";
 import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
 import Image from "next/image";
@@ -23,30 +23,38 @@ export default function IdentitySetup() {
   const [businessName, setBusinessName] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingExisting, setIsLoadingExisting] = useState(true);
+  const [isCheckingBrand, setIsCheckingBrand] = useState(true);
 
-  // Load any previously saved brand identity
+  // Check if user already has a brand identity — if so, skip to upload
   useEffect(() => {
-    const loadExisting = async () => {
+    const checkBrand = async () => {
       try {
-        const existing = await getBrandIdentity();
-        if (existing) {
-          setWebsiteUrl(existing.websiteUrl || "");
-          setDescription(existing.description || "");
-          setBusinessName(existing.businessName || "");
+        const res = await fetch(`${API_BASE_URL}/api/brand-identity`, {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.brandIdentity) {
+            // Brand identity exists — also save to IndexedDB for processing page, then skip
+            await saveBrandIdentity({
+              websiteUrl: data.brandIdentity.websiteUrl || undefined,
+              description: data.brandIdentity.description || undefined,
+              businessName: data.brandIdentity.businessName || undefined,
+              analyzedAt: Date.now(),
+            });
+            router.replace("/upload");
+            return;
+          }
         }
       } catch (error) {
-        console.error("Error loading existing brand data:", error);
+        console.error("Error checking brand identity:", error);
       } finally {
-        setIsLoadingExisting(false);
+        setIsCheckingBrand(false);
       }
     };
-    loadExisting();
-  }, []);
+    checkBrand();
+  }, [router]);
 
-  /**
-   * Call the backend to scrape and analyze the website URL and/or description.
-   */
   const handleAnalyzeUrl = async () => {
     if (!websiteUrl.trim() && !description.trim()) {
       toast.error(t("create.noInput"));
@@ -63,7 +71,7 @@ export default function IdentitySetup() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(30000), // 30s timeout for scraping + GPT
+        signal: AbortSignal.timeout(30000),
       });
 
       if (!res.ok) {
@@ -77,7 +85,6 @@ export default function IdentitySetup() {
 
       const data: AnalyzeBrandResponse = await res.json();
 
-      // Fill in the fields with the analysis
       if (data.businessName) setBusinessName(data.businessName);
       if (data.description) setDescription(data.description);
 
@@ -88,23 +95,15 @@ export default function IdentitySetup() {
     } catch (error) {
       console.error("Error analyzing brand:", error);
       if (error instanceof DOMException && error.name === "AbortError") {
-        toast.error(t("create.analyzeTimeout"), {
-          duration: 5000,
-        });
+        toast.error(t("create.analyzeTimeout"), { duration: 5000 });
       } else {
-        toast.error(
-          t("create.serverError"),
-          { duration: 5000 }
-        );
+        toast.error(t("create.serverError"), { duration: 5000 });
       }
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  /**
-   * Save the brand identity and navigate to the upload page.
-   */
   const handleContinue = async () => {
     if (!websiteUrl && !description.trim()) {
       return;
@@ -112,6 +111,23 @@ export default function IdentitySetup() {
 
     setIsSaving(true);
     try {
+      // Save to API (database)
+      const res = await fetch(`${API_BASE_URL}/api/brand-identity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          businessName: businessName || undefined,
+          websiteUrl: websiteUrl || undefined,
+          description: description || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save brand identity");
+      }
+
+      // Also save to IndexedDB for the processing page
       await saveBrandIdentity({
         websiteUrl: websiteUrl || undefined,
         description: description || undefined,
@@ -129,6 +145,14 @@ export default function IdentitySetup() {
   };
 
   const isFormValid = websiteUrl.trim() || description.trim();
+
+  if (isCheckingBrand) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-mood-onboarding">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-600 border-r-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-mood-onboarding px-6 py-8">
@@ -208,59 +232,30 @@ export default function IdentitySetup() {
               type="url"
               value={websiteUrl}
               onChange={(e) => setWebsiteUrl(e.target.value)}
-              placeholder={
-                isLoadingExisting ? t("common.loading") : t("create.websitePlaceholder")
-              }
-              disabled={isLoadingExisting || isAnalyzing}
+              placeholder={t("create.websitePlaceholder")}
+              disabled={isAnalyzing}
               className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-12 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
             />
           </div>
 
-          {/* Analyze URL button - shows when URL is entered */}
           {websiteUrl.trim() && (
             <button
               onClick={handleAnalyzeUrl}
-              disabled={isAnalyzing || isLoadingExisting}
+              disabled={isAnalyzing}
               className="mt-3 w-full rounded-2xl border-2 border-purple-200 bg-purple-50 px-6 py-3 text-sm font-semibold text-purple-700 transition-all hover:bg-purple-100 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isAnalyzing ? (
                 <>
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   <span>{t("create.analyzing")}</span>
                 </>
               ) : (
                 <>
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <span>{t("create.analyzeBtn")}</span>
                 </>
@@ -287,61 +282,29 @@ export default function IdentitySetup() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={
-              isLoadingExisting
-                ? t("common.loading")
-                : t("create.descPlaceholder")
-            }
-            disabled={isLoadingExisting}
+            placeholder={t("create.descPlaceholder")}
             rows={6}
             className="w-full rounded-2xl border border-gray-100 bg-white/80 backdrop-blur-sm px-4 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none hover:border-purple-200 hover:shadow-sm disabled:opacity-50"
           />
 
-          {/* Analyze description button - shows when description is entered but no URL */}
           {description.trim() && !websiteUrl.trim() && (
             <button
               onClick={handleAnalyzeUrl}
-              disabled={isAnalyzing || isLoadingExisting}
+              disabled={isAnalyzing}
               className="mt-3 w-full rounded-2xl border-2 border-purple-200 bg-purple-50 px-6 py-3 text-sm font-semibold text-purple-700 transition-all hover:bg-purple-100 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isAnalyzing ? (
                 <>
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   <span>{t("create.analyzing")}</span>
                 </>
               ) : (
                 <>
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                    />
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                   </svg>
                   <span>{t("create.analyzeBtn")}</span>
                 </>
@@ -353,48 +316,22 @@ export default function IdentitySetup() {
         {/* Continue Button */}
         <button
           onClick={handleContinue}
-          disabled={isSaving || isLoadingExisting || isAnalyzing || !isFormValid}
+          disabled={isSaving || isAnalyzing || !isFormValid}
           className="w-full rounded-2xl bg-[#8B5CF6] px-6 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-200 transition-all hover:bg-purple-600 hover:shadow-2xl hover:shadow-purple-300 hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isSaving ? (
             <>
-              <svg
-                className="animate-spin h-5 w-5"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               <span>{t("common.save")}...</span>
             </>
           ) : (
             <>
               <span>{t("create.continueBtn")}</span>
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                />
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </>
           )}

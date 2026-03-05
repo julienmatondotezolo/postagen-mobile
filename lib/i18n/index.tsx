@@ -3,10 +3,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import nl from "./nl.json";
 import fr from "./fr.json";
+import en from "./en.json";
 
-export type Locale = "nl" | "fr";
+export type Locale = "nl" | "fr" | "en";
 
-const translations: Record<Locale, typeof nl> = { nl, fr };
+const translations: Record<Locale, typeof nl> = { nl, fr, en };
 
 const LOCALE_KEY = "postagen-locale";
 
@@ -42,7 +43,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem(LOCALE_KEY) as Locale | null;
-    if (saved && (saved === "nl" || saved === "fr")) {
+    if (saved && (saved === "nl" || saved === "fr" || saved === "en")) {
       setLocaleState(saved);
     }
   }, []);
@@ -76,26 +77,19 @@ export function LanguageSwitcher({ className }: { className?: string }) {
 
   return (
     <div className={`flex items-center gap-1 rounded-full bg-white/10 p-1 ${className || ""}`}>
-      <button
-        onClick={() => setLocale("nl")}
-        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-          locale === "nl"
-            ? "bg-purple-600 text-white shadow-sm"
-            : "text-gray-400 hover:text-white"
-        }`}
-      >
-        NL
-      </button>
-      <button
-        onClick={() => setLocale("fr")}
-        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-          locale === "fr"
-            ? "bg-purple-600 text-white shadow-sm"
-            : "text-gray-400 hover:text-white"
-        }`}
-      >
-        FR
-      </button>
+      {(["nl", "fr", "en"] as const).map((lang) => (
+        <button
+          key={lang}
+          onClick={() => setLocale(lang)}
+          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+            locale === lang
+              ? "bg-purple-600 text-white shadow-sm"
+              : "text-gray-400 hover:text-white"
+          }`}
+        >
+          {lang.toUpperCase()}
+        </button>
+      ))}
     </div>
   );
 }

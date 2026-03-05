@@ -2,20 +2,34 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getBrandIdentity, type BrandIdentity } from "@/lib/db";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/config";
+
+interface BrandIdentity {
+  businessName?: string;
+  websiteUrl?: string;
+  description?: string;
+}
 
 export default function ProfilePage() {
   const { t } = useI18n();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const [brandIdentity, setBrandIdentity] = useState<BrandIdentity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const loadBrand = async () => {
       try {
-        const identity = await getBrandIdentity();
-        setBrandIdentity(identity || null);
+        const res = await fetch(`${API_BASE_URL}/api/brand-identity`, {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setBrandIdentity(data.brandIdentity || null);
+        }
       } catch (error) {
         console.error("Error loading brand identity:", error);
       } finally {
@@ -42,6 +56,41 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Account Card */}
+            {user && (
+              <div className="rounded-[32px] bg-white p-6 shadow-sm border border-gray-50">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50">
+                    <svg className="h-5 w-5 text-[#8B5CF6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-lg font-bold text-gray-900">{t("auth.account")}</h2>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      {t("auth.email")}
+                    </label>
+                    <p className="text-sm font-medium text-gray-900">{user.email}</p>
+                  </div>
+                  {user.username && (
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        {t("auth.username")}
+                      </label>
+                      <p className="text-sm font-medium text-gray-900">{user.username}</p>
+                    </div>
+                  )}
+                  {!user.email_verified && (
+                    <div className="rounded-xl bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-700">
+                      {t("auth.emailNotVerified")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Brand Identity Card */}
             <div className="rounded-[32px] bg-white p-6 shadow-sm border border-gray-50">
               <div className="mb-4 flex items-center justify-between">
@@ -156,6 +205,18 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={async () => {
+                setIsLoggingOut(true);
+                await logout();
+              }}
+              disabled={isLoggingOut}
+              className="w-full rounded-2xl border-2 border-red-200 bg-red-50 px-6 py-4 text-sm font-semibold text-red-600 transition-all hover:bg-red-100 hover:border-red-300 active:scale-[0.98] disabled:opacity-50"
+            >
+              {isLoggingOut ? t("common.loading") : t("auth.logout")}
+            </button>
           </div>
         )}
       </div>

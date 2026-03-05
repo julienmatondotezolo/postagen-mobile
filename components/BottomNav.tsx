@@ -15,8 +15,8 @@ export default function BottomNav() {
   const router = useRouter();
   const { t } = useI18n();
 
-  // Hide nav on wizard flow pages and processing
-  if (pathname.startsWith("/create") || pathname === "/upload" || pathname === "/processing") {
+  // Hide nav on wizard flow pages, processing, and auth pages
+  if (pathname.startsWith("/create") || pathname === "/upload" || pathname === "/processing" || pathname.startsWith("/auth")) {
     return null;
   }
 

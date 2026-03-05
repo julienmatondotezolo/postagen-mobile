@@ -4,6 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import ToastProvider from "@/components/ToastProvider";
 import QueryProvider from "@/components/QueryProvider";
 import { I18nProvider } from "@/lib/i18n";
+import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
 
 const inter = Inter({
@@ -54,9 +55,11 @@ export default function RootLayout({
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
         <I18nProvider>
           <QueryProvider>
-            <ToastProvider />
-            {children}
-            <BottomNav />
+            <AuthProvider>
+              <ToastProvider />
+              {children}
+              <BottomNav />
+            </AuthProvider>
           </QueryProvider>
         </I18nProvider>
       </body>
