@@ -85,6 +85,7 @@ export default function MediaUpload() {
   // Library tab state
   const [libraryFolder, setLibraryFolder] = useState<FolderFilter>("all");
   const [selectedLibraryIds, setSelectedLibraryIds] = useState<Set<string>>(new Set());
+  const [selectedLibraryUrls, setSelectedLibraryUrls] = useState<Map<string, string>>(new Map());
 
   // Fetch folders for library tab
   const { data: userFolders = [] } = useQuery({
@@ -282,16 +283,20 @@ export default function MediaUpload() {
   // Library tab: toggle media selection
   const toggleLibraryItem = (media: MediaRecord) => {
     const newSelected = new Set(selectedLibraryIds);
+    const newUrls = new Map(selectedLibraryUrls);
     if (newSelected.has(media.id)) {
       newSelected.delete(media.id);
+      newUrls.delete(media.id);
     } else {
       if (totalSelected >= MAX_FILES) {
         toast.error(t("upload.maxFiles"));
         return;
       }
       newSelected.add(media.id);
+      newUrls.set(media.id, media.url);
     }
     setSelectedLibraryIds(newSelected);
+    setSelectedLibraryUrls(newUrls);
   };
 
   const handleContinue = async () => {
@@ -311,10 +316,8 @@ export default function MediaUpload() {
       }
 
       // Store selected library URLs in sessionStorage
-      if (selectedLibraryIds.size > 0 && libraryMedia) {
-        const selectedUrls = libraryMedia
-          .filter((m: MediaRecord) => selectedLibraryIds.has(m.id))
-          .map((m: MediaRecord) => m.url);
+      if (selectedLibraryUrls.size > 0) {
+        const selectedUrls = Array.from(selectedLibraryUrls.values());
         sessionStorage.setItem("postagen-mediaUrls", JSON.stringify(selectedUrls));
       } else {
         sessionStorage.removeItem("postagen-mediaUrls");
