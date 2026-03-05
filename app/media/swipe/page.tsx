@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMedia, getFolders, updateMediaStatus, type MediaRecord } from "@/lib/api";
@@ -14,6 +14,7 @@ export default function SwipePage() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const historyRef = useRef<Array<{ id: string; index: number }>>([]);
 
   const folderId = searchParams.get("folderId");
   const isUnsorted = searchParams.get("folder") === "unsorted" || !folderId;
@@ -47,6 +48,7 @@ export default function SwipePage() {
       const item = media[currentIndex];
       const newStatus = direction === "right" ? "liked" : "unliked";
 
+      historyRef.current.push({ id: item.id, index: currentIndex });
       setCurrentIndex((prev) => prev + 1);
 
       try {
@@ -62,12 +64,26 @@ export default function SwipePage() {
     [media, currentIndex, queryClient, t]
   );
 
-  const handleButtonSwipe = (direction: "left" | "right") => {
-    handleSwipe(direction);
-  };
+  const handleUndo = useCallback(async () => {
+    const last = historyRef.current.pop();
+    if (!last) return;
+
+    setCurrentIndex(last.index);
+
+    try {
+      await updateMediaStatus(last.id, "pending");
+      queryClient.invalidateQueries({ queryKey: ["media-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["media-recent"] });
+      queryClient.invalidateQueries({ queryKey: ["media"] });
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+    } catch {
+      toast.error(t("media.swipeError"));
+    }
+  }, [queryClient, t]);
 
   const remaining = media ? media.length - currentIndex : 0;
   const visibleCards = media?.slice(currentIndex, currentIndex + 2) ?? [];
+  const canUndo = historyRef.current.length > 0;
 
   return (
     <div className="fixed inset-0 bg-gray-950 flex flex-col">
@@ -128,9 +144,9 @@ export default function SwipePage() {
 
       {/* Bottom Buttons */}
       {remaining > 0 && (
-        <div className="relative z-20 flex items-center justify-center gap-8 pb-10">
+        <div className="relative z-20 flex items-center justify-center gap-6 pb-10">
           <button
-            onClick={() => handleButtonSwipe("left")}
+            onClick={() => handleSwipe("left")}
             className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 border-2 border-red-500 text-red-500 transition-all hover:bg-red-500 hover:text-white active:scale-90"
           >
             <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -138,12 +154,36 @@ export default function SwipePage() {
             </svg>
           </button>
           <button
-            onClick={() => handleButtonSwipe("right")}
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 border-2 border-white/20 text-white/60 transition-all hover:bg-white/20 active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+            </svg>
+          </button>
+          <button
+            onClick={() => handleSwipe("right")}
             className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20 border-2 border-green-500 text-green-500 transition-all hover:bg-green-500 hover:text-white active:scale-90"
           >
             <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
               <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Undo available on "all sorted" screen too */}
+      {remaining === 0 && canUndo && (
+        <div className="relative z-20 flex justify-center pb-6">
+          <button
+            onClick={handleUndo}
+            className="flex items-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white/70 transition-all hover:bg-white/20"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+            </svg>
+            {t("media.undo")}
           </button>
         </div>
       )}

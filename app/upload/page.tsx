@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { saveMedia, clearAllMedia, type MediaFile } from "@/lib/db";
-import { getMedia, type MediaRecord } from "@/lib/api";
+import { getMedia, getFolders, type MediaRecord, type Folder } from "@/lib/api";
 import toast, { Toaster } from "react-hot-toast";
 import { useI18n } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
@@ -58,7 +58,7 @@ async function compressImage(file: File, maxDimension: number = 1920, quality: n
 }
 
 type TabType = "upload" | "library";
-type FolderFilter = "all" | "liked" | "unsorted";
+type FolderFilter = "all" | "liked" | "unsorted" | string;
 
 const MAX_FILES = 250;
 
@@ -86,10 +86,24 @@ export default function MediaUpload() {
   const [libraryFolder, setLibraryFolder] = useState<FolderFilter>("all");
   const [selectedLibraryIds, setSelectedLibraryIds] = useState<Set<string>>(new Set());
 
+  // Fetch folders for library tab
+  const { data: userFolders = [] } = useQuery({
+    queryKey: ["folders"],
+    queryFn: getFolders,
+    enabled: activeTab === "library",
+  });
+
+  // Determine if libraryFolder is a custom folder ID
+  const isBuiltinFilter = ["all", "liked", "unsorted"].includes(libraryFolder);
+
   // Fetch library media
   const { data: libraryMedia, isLoading: libraryLoading } = useQuery({
     queryKey: ["library-media", libraryFolder],
-    queryFn: () => getMedia({ folder: libraryFolder === "all" ? undefined : libraryFolder, limit: 200 }),
+    queryFn: () => getMedia({
+      folder: isBuiltinFilter && libraryFolder !== "all" ? libraryFolder : undefined,
+      folderId: !isBuiltinFilter ? libraryFolder : undefined,
+      limit: 200,
+    }),
     enabled: activeTab === "library",
   });
 
@@ -498,18 +512,34 @@ export default function MediaUpload() {
           {activeTab === "library" && (
             <div onClick={(e) => e.stopPropagation()}>
               {/* Folder Filter */}
-              <div className="mb-4 flex gap-2">
+              <div className="mb-4 flex gap-2 overflow-x-auto no-scrollbar pb-1">
                 {(["all", "liked", "unsorted"] as FolderFilter[]).map((folder) => (
                   <button
                     key={folder}
                     onClick={() => setLibraryFolder(folder)}
-                    className={`rounded-full px-4 py-2 text-xs font-bold transition-all ${
+                    className={`flex-shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-all ${
                       libraryFolder === folder
                         ? "bg-purple-500 text-white shadow-sm"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
                     {t(`upload.folder_${folder}`)}
+                  </button>
+                ))}
+                {userFolders.map((folder: Folder) => (
+                  <button
+                    key={folder.id}
+                    onClick={() => setLibraryFolder(folder.id)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all ${
+                      libraryFolder === folder.id
+                        ? "bg-purple-500 text-white shadow-sm"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill={libraryFolder === folder.id ? "white" : folder.color}>
+                      <path d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                    </svg>
+                    {folder.name}
                   </button>
                 ))}
               </div>

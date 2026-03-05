@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSharedFolder, getShareVotes, submitShareVote, type MediaRecord } from "@/lib/api";
@@ -18,6 +18,7 @@ export default function ShareSwipePage() {
   const [nameSubmitted, setNameSubmitted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
+  const historyRef = useRef<Array<{ mediaId: string; index: number }>>([]);
 
   // Check sessionStorage for existing name
   useEffect(() => {
@@ -68,6 +69,7 @@ export default function ShareSwipePage() {
       const item = unvotedMedia[currentIndex];
       const vote = direction === "right" ? "liked" : "unliked";
 
+      historyRef.current.push({ mediaId: item.id, index: currentIndex });
       setCurrentIndex((prev) => prev + 1);
 
       try {
@@ -83,6 +85,15 @@ export default function ShareSwipePage() {
     },
     [unvotedMedia, currentIndex, token, voterName, queryClient, t]
   );
+
+  const handleUndo = useCallback(() => {
+    const last = historyRef.current.pop();
+    if (!last) return;
+    setCurrentIndex(last.index);
+    // Note: for share swipe we don't delete the vote from DB — the next swipe will upsert/overwrite
+  }, []);
+
+  const canUndo = historyRef.current.length > 0;
 
   if (isLoading) {
     return (
@@ -191,13 +202,22 @@ export default function ShareSwipePage() {
 
       {/* Bottom Buttons */}
       {remaining > 0 && (
-        <div className="relative z-20 flex items-center justify-center gap-8 pb-10">
+        <div className="relative z-20 flex items-center justify-center gap-6 pb-10">
           <button
             onClick={() => handleSwipe("left")}
             className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 border-2 border-red-500 text-red-500 transition-all hover:bg-red-500 hover:text-white active:scale-90"
           >
             <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 border-2 border-white/20 text-white/60 transition-all hover:bg-white/20 active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
             </svg>
           </button>
           <button

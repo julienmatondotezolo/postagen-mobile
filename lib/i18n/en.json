@@ -220,6 +220,7 @@
     "renameFolder": "Rename",
     "movedToFolder": "Moved to folder",
     "pending": "Pending",
+    "undo": "Undo",
     "selectFolderToSwipe": "Select a folder to start swiping",
     "deleteFolderTitle": "Delete folder",
     "deleteFolderKeep": "Keep media",
