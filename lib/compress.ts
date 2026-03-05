@@ -97,10 +97,16 @@ async function convertHeicToJpeg(file: File): Promise<File> {
 /**
  * Compress an array of files: convert HEIC, compress images, pass videos through.
  */
-export async function compressFiles(files: File[]): Promise<File[]> {
+export async function compressFiles(
+  files: File[],
+  onProgress?: (current: number, total: number) => void
+): Promise<File[]> {
   const result: File[] = [];
+  const total = files.length;
 
-  for (let file of files) {
+  for (let i = 0; i < files.length; i++) {
+    let file = files[i];
+    onProgress?.(i + 1, total);
     // Convert HEIC/HEIF
     const isHeic =
       file.name.toLowerCase().endsWith(".heic") ||

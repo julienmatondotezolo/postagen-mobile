@@ -225,7 +225,26 @@
     "deleteFolderKeep": "Media behouden",
     "deleteFolderKeepDesc": "Media wordt verplaatst naar Ongesorteerd",
     "deleteFolderAll": "Map en media verwijderen",
-    "deleteFolderAllDesc": "Alle media wordt permanent verwijderd"
+    "deleteFolderAllDesc": "Alle media wordt permanent verwijderd",
+    "shareFolder": "Delen",
+    "shareLinkCopied": "Link gekopieerd!",
+    "shareError": "Kon deellink niet aanmaken",
+    "compressing": "Foto's comprimeren...",
+    "compressingProgress": "Comprimeren {current}/{total}..."
+  },
+  "share": {
+    "title": "Gedeelde Galerij",
+    "by": "Gedeeld door",
+    "swipe": "Swipen",
+    "enterName": "Vul je naam in om te beginnen met swipen",
+    "namePlaceholder": "Je naam...",
+    "start": "Start met Swipen",
+    "allDone": "Helemaal klaar!",
+    "allDoneDesc": "Je hebt op alle media gestemd. Bedankt!",
+    "backToGallery": "Terug naar galerij",
+    "remaining": "resterend",
+    "voteError": "Kon stem niet opslaan",
+    "notFound": "Deze deellink is ongeldig of verlopen"
   },
   "auth": {
     "loginSubtitle": "Log in om verder te gaan",

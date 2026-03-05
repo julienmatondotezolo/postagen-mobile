@@ -30,6 +30,7 @@ export default function HomePage() {
     plan: null,
   });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [compressProgress, setCompressProgress] = useState<{ current: number; total: number } | null>(null);
 
   // Media stats
   const { data: stats } = useQuery({
@@ -65,7 +66,11 @@ export default function HomePage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     try {
-      const compressed = await compressFiles(files);
+      setCompressProgress({ current: 0, total: files.length });
+      const compressed = await compressFiles(files, (current, total) => {
+        setCompressProgress({ current, total });
+      });
+      setCompressProgress(null);
       if (compressed.length === 0) {
         toast.error(t("dashboard.uploadFailed"));
         return;
@@ -73,6 +78,7 @@ export default function HomePage() {
       setPendingFiles(compressed);
       setShowFolderSelect(true);
     } catch (error) {
+      setCompressProgress(null);
       console.error("Compress error:", error);
       toast.error(t("dashboard.uploadFailed"));
     }
@@ -247,11 +253,22 @@ export default function HomePage() {
               {t("dashboard.quickUpload")}
             </h2>
             <button
-              onClick={() => !upload.isUploading && fileInputRef.current?.click()}
-              disabled={upload.isUploading}
+              onClick={() => !upload.isUploading && !compressProgress && fileInputRef.current?.click()}
+              disabled={upload.isUploading || !!compressProgress}
               className="w-full rounded-2xl border-2 border-dashed border-purple-200 bg-white/60 p-6 text-center transition-all hover:border-purple-400 hover:bg-purple-50/50 active:scale-[0.98] disabled:opacity-50"
             >
-              {upload.isUploading ? (
+              {compressProgress ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
+                    <div className="h-6 w-6 animate-spin rounded-full border-3 border-purple-600 border-r-transparent" />
+                  </div>
+                  <p className="text-sm font-medium text-purple-600">
+                    {t("media.compressingProgress")
+                      .replace("{current}", String(compressProgress.current))
+                      .replace("{total}", String(compressProgress.total))}
+                  </p>
+                </div>
+              ) : upload.isUploading ? (
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-full max-w-[200px]">
                     <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-purple-100">

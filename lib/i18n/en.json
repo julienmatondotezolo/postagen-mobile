@@ -225,7 +225,26 @@
     "deleteFolderKeep": "Keep media",
     "deleteFolderKeepDesc": "Media will be moved to Unsorted",
     "deleteFolderAll": "Delete folder and media",
-    "deleteFolderAllDesc": "All media will be permanently deleted"
+    "deleteFolderAllDesc": "All media will be permanently deleted",
+    "shareFolder": "Share",
+    "shareLinkCopied": "Link copied!",
+    "shareError": "Could not create share link",
+    "compressing": "Compressing photos...",
+    "compressingProgress": "Compressing {current}/{total}..."
+  },
+  "share": {
+    "title": "Shared Gallery",
+    "by": "Shared by",
+    "swipe": "Swipe",
+    "enterName": "Enter your name to start swiping",
+    "namePlaceholder": "Your name...",
+    "start": "Start Swiping",
+    "allDone": "All done!",
+    "allDoneDesc": "You've voted on all the media. Thanks!",
+    "backToGallery": "Back to gallery",
+    "remaining": "remaining",
+    "voteError": "Could not save vote",
+    "notFound": "This share link is invalid or has expired"
   },
   "auth": {
     "loginSubtitle": "Log in to continue",

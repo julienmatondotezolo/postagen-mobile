@@ -311,6 +311,50 @@ export async function deletePostApi(id: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to delete post");
 }
 
+// Share
+export async function shareFolder(folderId: string): Promise<{ share_token: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/share/folder/${folderId}`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to share folder");
+  return res.json();
+}
+
+export async function getSharedFolder(token: string): Promise<{
+  folder: { id: string; name: string; color: string };
+  owner_name: string;
+  media: MediaRecord[];
+  shared_folder_id: string;
+}> {
+  const res = await fetch(`${API_BASE_URL}/api/share/public/${token}`);
+  if (!res.ok) throw new Error("Share not found");
+  return res.json();
+}
+
+export async function submitShareVote(
+  token: string,
+  data: { voter_name: string; media_id: string; vote: "liked" | "unliked" }
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/share/public/${token}/vote`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to save vote");
+}
+
+export async function getShareVotes(
+  token: string,
+  voterName: string
+): Promise<{ votes: Array<{ media_id: string; vote: string }> }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/share/public/${token}/votes/${encodeURIComponent(voterName)}`
+  );
+  if (!res.ok) throw new Error("Failed to get votes");
+  return res.json();
+}
+
 // Auth
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/auth/change-password`, {

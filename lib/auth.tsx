@@ -22,7 +22,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const PUBLIC_ROUTES = ["/auth/login", "/auth/register", "/auth/verify-email", "/auth/verify-required"];
+const PUBLIC_ROUTES = ["/auth/login", "/auth/register", "/auth/verify-email", "/auth/verify-required", "/share"];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

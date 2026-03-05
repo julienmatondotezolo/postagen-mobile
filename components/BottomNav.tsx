@@ -16,7 +16,7 @@ export default function BottomNav() {
   const { t } = useI18n();
 
   // Hide nav on wizard flow pages, processing, and auth pages
-  if (pathname.startsWith("/create") || pathname === "/upload" || pathname === "/context" || pathname === "/processing" || pathname.startsWith("/auth") || pathname === "/media/swipe") {
+  if (pathname.startsWith("/create") || pathname === "/upload" || pathname === "/context" || pathname === "/processing" || pathname.startsWith("/auth") || pathname === "/media/swipe" || pathname.startsWith("/share")) {
     return null;
   }
 

@@ -12,6 +12,7 @@ import {
   deleteFolder,
   bulkDeleteMedia,
   updateMediaFolder,
+  shareFolder,
   type MediaRecord,
   type Folder,
   type FolderStats,
@@ -52,6 +53,9 @@ export default function MediaPage() {
   // Folder delete confirmation
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
+
+  // Fullscreen viewer
+  const [fullscreenMedia, setFullscreenMedia] = useState<MediaRecord | null>(null);
 
   // Drag to folder
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -111,15 +115,19 @@ export default function MediaPage() {
 
   const handleItemClick = useCallback(
     (id: string) => {
-      if (!isSelectionMode) return;
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      });
+      if (isSelectionMode) {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+      } else {
+        const item = media?.find((m) => m.id === id);
+        if (item) setFullscreenMedia(item);
+      }
     },
-    [isSelectionMode]
+    [isSelectionMode, media]
   );
 
   const handleSelectAll = () => {
@@ -197,6 +205,17 @@ export default function MediaPage() {
     } finally {
       setIsDeletingFolder(false);
       setFolderToDelete(null);
+    }
+  };
+
+  const handleShareFolder = async (folderId: string) => {
+    try {
+      const { share_token } = await shareFolder(folderId);
+      const url = `${window.location.origin}/share/${share_token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success(t("media.shareLinkCopied"));
+    } catch {
+      toast.error(t("media.shareError"));
     }
   };
 
@@ -359,10 +378,12 @@ export default function MediaPage() {
                   {/* ⋯ menu button */}
                   <button
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
                       setShowFolderMenu(showFolderMenu === folder.id ? null : folder.id);
                     }}
-                    className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="absolute top-1 right-1 z-10 flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                   >
                     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                       <circle cx="12" cy="6" r="1.5" />
@@ -375,7 +396,9 @@ export default function MediaPage() {
                     className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl"
                     style={{ backgroundColor: `${folder.color}20` }}
                   >
-                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: folder.color }} />
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill={folder.color}>
+                      <path d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                    </svg>
                   </div>
                   <p className="text-xs font-semibold text-gray-900 truncate">{folder.name}</p>
                   <p className="text-[10px] text-gray-400">{fStats?.total ?? 0}</p>
@@ -406,6 +429,20 @@ export default function MediaPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
                           {t("media.renameFolder")}
+                        </button>
+                        <div className="border-t border-gray-100" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShareFolder(folder.id);
+                            setShowFolderMenu(null);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                          </svg>
+                          {t("media.shareFolder")}
                         </button>
                         <div className="border-t border-gray-100" />
                         <button
@@ -674,6 +711,40 @@ export default function MediaPage() {
               <button onClick={handleRenameFolder} disabled={!renameValue.trim()} className="flex-1 rounded-2xl bg-purple-600 py-3 text-sm font-bold text-white disabled:opacity-50">{t("common.save")}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Fullscreen Media Viewer */}
+      {fullscreenMedia && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
+          onClick={() => setFullscreenMedia(null)}
+        >
+          <button
+            onClick={() => setFullscreenMedia(null)}
+            className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+          >
+            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          {fullscreenMedia.type === "image" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={fullscreenMedia.url}
+              alt={fullscreenMedia.filename}
+              className="max-h-full max-w-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <video
+              src={fullscreenMedia.url}
+              className="max-h-full max-w-full object-contain"
+              controls
+              autoPlay
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>
       )}
     </div>

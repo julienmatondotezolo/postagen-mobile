@@ -225,7 +225,26 @@
     "deleteFolderKeep": "Garder les médias",
     "deleteFolderKeepDesc": "Les médias seront déplacés vers Non trié",
     "deleteFolderAll": "Supprimer le dossier et les médias",
-    "deleteFolderAllDesc": "Tous les médias seront supprimés définitivement"
+    "deleteFolderAllDesc": "Tous les médias seront supprimés définitivement",
+    "shareFolder": "Partager",
+    "shareLinkCopied": "Lien copié !",
+    "shareError": "Impossible de créer le lien de partage",
+    "compressing": "Compression des photos...",
+    "compressingProgress": "Compression {current}/{total}..."
+  },
+  "share": {
+    "title": "Galerie Partagée",
+    "by": "Partagé par",
+    "swipe": "Swiper",
+    "enterName": "Entrez votre nom pour commencer à swiper",
+    "namePlaceholder": "Votre nom...",
+    "start": "Commencer à Swiper",
+    "allDone": "Terminé !",
+    "allDoneDesc": "Vous avez voté sur tous les médias. Merci !",
+    "backToGallery": "Retour à la galerie",
+    "remaining": "restants",
+    "voteError": "Impossible d'enregistrer le vote",
+    "notFound": "Ce lien de partage est invalide ou a expiré"
   },
   "auth": {
     "loginSubtitle": "Connectez-vous pour continuer",
