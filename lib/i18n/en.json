@@ -232,7 +232,14 @@
     "shareLinkCopied": "Link copied!",
     "shareError": "Could not create share link",
     "compressing": "Compressing photos...",
-    "compressingProgress": "Compressing {current}/{total}..."
+    "compressingProgress": "Compressing {current}/{total}...",
+    "shareSettings": "Share settings",
+    "shareLink": "Share link",
+    "sharePublic": "Public",
+    "sharePrivate": "Private",
+    "shareCopied": "Link copied!",
+    "shareDeactivated": "Share link deactivated",
+    "shareActivated": "Share link activated"
   },
   "share": {
     "title": "Shared Gallery",

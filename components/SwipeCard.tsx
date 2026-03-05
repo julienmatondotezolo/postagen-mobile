@@ -6,10 +6,11 @@ import type { MediaRecord } from "@/lib/api";
 interface SwipeCardProps {
   media: MediaRecord;
   onSwipe: (direction: "left" | "right") => void;
+  onTap?: () => void;
   isTop: boolean;
 }
 
-export default function SwipeCard({ media, onSwipe, isTop }: SwipeCardProps) {
+export default function SwipeCard({ media, onSwipe, onTap, isTop }: SwipeCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -36,6 +37,8 @@ export default function SwipeCard({ media, onSwipe, isTop }: SwipeCardProps) {
     [isDragging, isTop]
   );
 
+  const TAP_THRESHOLD = 10;
+
   const handleEnd = useCallback(() => {
     if (!isDragging) return;
     setIsDragging(false);
@@ -46,11 +49,15 @@ export default function SwipeCard({ media, onSwipe, isTop }: SwipeCardProps) {
       const flyX = offset.x > 0 ? 500 : -500;
       setOffset({ x: flyX, y: offset.y });
       setTimeout(() => onSwipe(direction), 200);
+    } else if (Math.abs(offset.x) < TAP_THRESHOLD && Math.abs(offset.y) < TAP_THRESHOLD) {
+      // It was a tap, not a drag
+      setOffset({ x: 0, y: 0 });
+      onTap?.();
     } else {
       // Snap back
       setOffset({ x: 0, y: 0 });
     }
-  }, [isDragging, offset, onSwipe]);
+  }, [isDragging, offset, onSwipe, onTap]);
 
   const rotation = offset.x * 0.1;
   const likeOpacity = Math.min(Math.max(offset.x / SWIPE_THRESHOLD, 0), 1);

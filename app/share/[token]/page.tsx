@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { getSharedFolder, type MediaRecord } from "@/lib/api";
+import { getSharedFolder } from "@/lib/api";
+import type { MediaRecord } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
 export default function ShareGalleryPage() {
   const { t } = useI18n();
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
-  const [fullscreenMedia, setFullscreenMedia] = useState<MediaRecord | null>(null);
+  const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["shared-folder", token],
@@ -71,7 +72,7 @@ export default function ShareGalleryPage() {
               <div
                 key={item.id}
                 className="relative aspect-square overflow-hidden rounded-2xl bg-gray-100 shadow-sm cursor-pointer"
-                onClick={() => setFullscreenMedia(item)}
+                onClick={() => setFullscreenIndex(media.indexOf(item))}
               >
                 {item.type === "image" ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -108,38 +109,66 @@ export default function ShareGalleryPage() {
       )}
 
       {/* Fullscreen Media Viewer */}
-      {fullscreenMedia && (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
-          onClick={() => setFullscreenMedia(null)}
-        >
-          <button
-            onClick={() => setFullscreenMedia(null)}
-            className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+      {fullscreenIndex !== null && media[fullscreenIndex] && (() => {
+        const currentMedia = media[fullscreenIndex];
+        return (
+          <div
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
+            onClick={() => setFullscreenIndex(null)}
           >
-            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          {fullscreenMedia.type === "image" ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={fullscreenMedia.url}
-              alt={fullscreenMedia.filename}
-              className="max-h-full max-w-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <video
-              src={fullscreenMedia.url}
-              className="max-h-full max-w-full object-contain"
-              controls
-              autoPlay
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
-        </div>
-      )}
+            <button
+              onClick={() => setFullscreenIndex(null)}
+              className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+            >
+              <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Prev button */}
+            {fullscreenIndex > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setFullscreenIndex(fullscreenIndex - 1); }}
+                className="absolute left-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+              >
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+
+            {/* Next button */}
+            {fullscreenIndex < media.length - 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setFullscreenIndex(fullscreenIndex + 1); }}
+                className="absolute right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+              >
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+
+            {currentMedia.type === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentMedia.url}
+                alt={currentMedia.filename}
+                className="max-h-full max-w-full object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <video
+                src={currentMedia.url}
+                className="max-h-full max-w-full object-contain"
+                controls
+                autoPlay
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

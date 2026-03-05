@@ -13,6 +13,8 @@ import {
   bulkDeleteMedia,
   updateMediaFolder,
   shareFolder,
+  getShareStatus,
+  updateShareFolder,
   type MediaRecord,
   type Folder,
   type FolderStats,
@@ -56,7 +58,11 @@ export default function MediaPage() {
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
 
   // Fullscreen viewer
-  const [fullscreenMedia, setFullscreenMedia] = useState<MediaRecord | null>(null);
+  const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
+
+  // Share modal
+  const [shareModal, setShareModal] = useState<{ folderId: string; token: string; isActive: boolean } | null>(null);
+  const [isTogglingShare, setIsTogglingShare] = useState(false);
 
   // Drag to folder
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -124,8 +130,8 @@ export default function MediaPage() {
           return next;
         });
       } else {
-        const item = media?.find((m) => m.id === id);
-        if (item) setFullscreenMedia(item);
+        const idx = media?.findIndex((m) => m.id === id);
+        if (idx !== undefined && idx >= 0) setFullscreenIndex(idx);
       }
     },
     [isSelectionMode, media]
@@ -212,12 +218,36 @@ export default function MediaPage() {
   const handleShareFolder = async (folderId: string) => {
     try {
       const { share_token } = await shareFolder(folderId);
-      const url = `${window.location.origin}/share/${share_token}`;
-      await navigator.clipboard.writeText(url);
-      toast.success(t("media.shareLinkCopied"));
+      const status = await getShareStatus(folderId);
+      setShareModal({
+        folderId,
+        token: share_token,
+        isActive: status?.is_active ?? true,
+      });
     } catch {
       toast.error(t("media.shareError"));
     }
+  };
+
+  const handleToggleShare = async () => {
+    if (!shareModal) return;
+    setIsTogglingShare(true);
+    try {
+      const result = await updateShareFolder(shareModal.folderId, !shareModal.isActive);
+      setShareModal({ ...shareModal, isActive: result.is_active });
+      toast.success(result.is_active ? t("media.shareActivated") : t("media.shareDeactivated"));
+    } catch {
+      toast.error(t("media.shareError"));
+    } finally {
+      setIsTogglingShare(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareModal) return;
+    const url = `${window.location.origin}/share/${shareModal.token}`;
+    await navigator.clipboard.writeText(url);
+    toast.success(t("media.shareLinkCopied"));
   };
 
   // Drag handlers
@@ -729,36 +759,118 @@ export default function MediaPage() {
       )}
 
       {/* Fullscreen Media Viewer */}
-      {fullscreenMedia && (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
-          onClick={() => setFullscreenMedia(null)}
-        >
-          <button
-            onClick={() => setFullscreenMedia(null)}
-            className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+      {fullscreenIndex !== null && media && media[fullscreenIndex] && (() => {
+        const currentMedia = media[fullscreenIndex];
+        return (
+          <div
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
+            onClick={() => setFullscreenIndex(null)}
           >
-            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          {fullscreenMedia.type === "image" ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={fullscreenMedia.url}
-              alt={fullscreenMedia.filename}
-              className="max-h-full max-w-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <video
-              src={fullscreenMedia.url}
-              className="max-h-full max-w-full object-contain"
-              controls
-              autoPlay
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
+            <button
+              onClick={() => setFullscreenIndex(null)}
+              className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+            >
+              <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Prev button */}
+            {fullscreenIndex > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setFullscreenIndex(fullscreenIndex - 1); }}
+                className="absolute left-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+              >
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+
+            {/* Next button */}
+            {fullscreenIndex < media.length - 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setFullscreenIndex(fullscreenIndex + 1); }}
+                className="absolute right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+              >
+                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+
+            {currentMedia.type === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentMedia.url}
+                alt={currentMedia.filename}
+                className="max-h-full max-w-full object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <video
+                src={currentMedia.url}
+                className="max-h-full max-w-full object-contain"
+                controls
+                autoPlay
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Share Settings Modal */}
+      {shareModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm px-6" onClick={() => setShareModal(null)}>
+          <div className="w-full max-w-sm rounded-[32px] bg-white p-8 shadow-2xl slide-up" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-6 text-xl font-bold text-gray-900">{t("media.shareSettings")}</h3>
+
+            {/* Share link */}
+            <label className="mb-2 block text-sm font-semibold text-gray-500">{t("media.shareLink")}</label>
+            <div className="mb-6 flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <span className="flex-1 truncate text-sm text-gray-700">
+                {`${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareModal.token}`}
+              </span>
+              <button
+                onClick={handleCopyShareLink}
+                className="flex-shrink-0 rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Toggle */}
+            <div className="mb-8 flex items-center justify-between rounded-2xl bg-gray-50 px-4 py-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {shareModal.isActive ? t("media.sharePublic") : t("media.sharePrivate")}
+                </p>
+              </div>
+              <button
+                onClick={handleToggleShare}
+                disabled={isTogglingShare}
+                className={`relative inline-flex h-8 w-14 flex-shrink-0 items-center rounded-full transition-colors duration-200 ${
+                  shareModal.isActive ? "bg-purple-600" : "bg-gray-300"
+                } ${isTogglingShare ? "opacity-50" : ""}`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 rounded-full bg-white shadow-md transform transition-transform duration-200 ${
+                    shareModal.isActive ? "translate-x-7" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShareModal(null)}
+              className="w-full rounded-2xl bg-gray-100 py-3 text-sm font-bold text-gray-700"
+            >
+              {t("common.close")}
+            </button>
+          </div>
         </div>
       )}
     </div>

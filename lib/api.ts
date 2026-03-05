@@ -335,6 +335,26 @@ export async function shareFolder(folderId: string): Promise<{ share_token: stri
   return res.json();
 }
 
+export async function getShareStatus(folderId: string): Promise<{ share_token: string; is_active: boolean } | null> {
+  const res = await fetch(`${API_BASE_URL}/api/share/folder/${folderId}`, {
+    credentials: "include",
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to get share status");
+  return res.json();
+}
+
+export async function updateShareFolder(folderId: string, isActive: boolean): Promise<{ share_token: string; is_active: boolean }> {
+  const res = await fetch(`${API_BASE_URL}/api/share/folder/${folderId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_active: isActive }),
+  });
+  if (!res.ok) throw new Error("Failed to update share");
+  return res.json();
+}
+
 export async function getSharedFolder(token: string): Promise<{
   folder: { id: string; name: string; color: string };
   owner_name: string;

@@ -232,7 +232,14 @@
     "shareLinkCopied": "Link gekopieerd!",
     "shareError": "Kon deellink niet aanmaken",
     "compressing": "Foto's comprimeren...",
-    "compressingProgress": "Comprimeren {current}/{total}..."
+    "compressingProgress": "Comprimeren {current}/{total}...",
+    "shareSettings": "Deelinstellingen",
+    "shareLink": "Deellink",
+    "sharePublic": "Openbaar",
+    "sharePrivate": "Privé",
+    "shareCopied": "Link gekopieerd!",
+    "shareDeactivated": "Deellink gedeactiveerd",
+    "shareActivated": "Deellink geactiveerd"
   },
   "share": {
     "title": "Gedeelde Galerij",

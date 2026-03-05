@@ -15,6 +15,7 @@ export default function ShareSwipePage() {
   const [voterName, setVoterName] = useState<string>("");
   const [nameSubmitted, setNameSubmitted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [fullscreenMedia, setFullscreenMedia] = useState<MediaRecord | null>(null);
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
   const historyRef = useRef<Array<{ mediaId: string; index: number }>>([]);
 
@@ -193,6 +194,7 @@ export default function ShareSwipePage() {
                 media={item}
                 isTop={i === 0}
                 onSwipe={handleSwipe}
+                onTap={() => setFullscreenMedia(item)}
               />
             ))
             .reverse()
@@ -227,6 +229,40 @@ export default function ShareSwipePage() {
               <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </button>
+        </div>
+      )}
+
+      {/* Fullscreen Media Viewer */}
+      {fullscreenMedia && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
+          onClick={() => setFullscreenMedia(null)}
+        >
+          <button
+            onClick={() => setFullscreenMedia(null)}
+            className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
+          >
+            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          {fullscreenMedia.type === "image" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={fullscreenMedia.url}
+              alt={fullscreenMedia.filename}
+              className="max-h-full max-w-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <video
+              src={fullscreenMedia.url}
+              className="max-h-full max-w-full object-contain"
+              controls
+              autoPlay
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>
       )}
     </div>
