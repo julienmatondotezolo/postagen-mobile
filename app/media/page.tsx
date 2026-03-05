@@ -383,12 +383,12 @@ export default function MediaPage() {
                       setShowFolderMenu(showFolderMenu === folder.id ? null : folder.id);
                     }}
                     onPointerDown={(e) => e.stopPropagation()}
-                    className="absolute top-1 right-1 z-10 flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                    className="absolute top-1.5 right-0.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/5 text-gray-500 active:bg-black/10 transition-colors"
                   >
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                      <circle cx="12" cy="6" r="1.5" />
-                      <circle cx="12" cy="12" r="1.5" />
-                      <circle cx="12" cy="18" r="1.5" />
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                      <circle cx="10" cy="4" r="2" />
+                      <circle cx="10" cy="10" r="2" />
+                      <circle cx="10" cy="16" r="2" />
                     </svg>
                   </button>
 
