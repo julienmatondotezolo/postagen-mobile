@@ -136,7 +136,8 @@
     "copied": "Caption copied!",
     "copyCaption": "Copy caption",
     "scheduledFor": "Scheduled for",
-    "noMedia": "No media attached"
+    "noMedia": "No media attached",
+    "addPosts": "Add posts"
   },
   "calendar": {
     "title": "Calendar",

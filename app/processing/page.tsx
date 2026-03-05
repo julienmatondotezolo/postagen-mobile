@@ -8,7 +8,7 @@ import {
   getBrandIdentity,
   updateMedia,
 } from "@/lib/db";
-import { createPlanApi } from "@/lib/api";
+import { createPlanApi, addPostsToPlanApi } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/config";
 import toast from "react-hot-toast";
 import { useI18n } from "@/lib/i18n";
@@ -26,6 +26,7 @@ function getAnalysisSteps(t: (key: string) => string) {
 interface GenerateResponsePost {
   id: string;
   mediaId: string;
+  realMediaId?: string | null; // Real Supabase UUID for library items
   caption: string;
   hashtags: string[];
   scheduledDate: string;
@@ -156,8 +157,12 @@ export default function Processing() {
         const weeklyContext = sessionStorage.getItem("postagen-weeklyContext") || "";
         const specialMessage = sessionStorage.getItem("postagen-specialMessage") || "";
         const mediaUrlsJson = sessionStorage.getItem("postagen-mediaUrls") || "[]";
+        const mediaIdsJson = sessionStorage.getItem("postagen-mediaIds") || "[]";
+        const addToPlanId = sessionStorage.getItem("postagen-addToPlanId");
         let mediaUrls: string[] = [];
+        let mediaIds: string[] = [];
         try { mediaUrls = JSON.parse(mediaUrlsJson); } catch {}
+        try { mediaIds = JSON.parse(mediaIdsJson); } catch {}
 
         // --- Build FormData (multipart/form-data) ---
         const formData = new FormData();
@@ -177,9 +182,12 @@ export default function Processing() {
         if (weeklyContext) formData.append("weeklyContext", weeklyContext);
         if (specialMessage) formData.append("specialMessage", specialMessage);
 
-        // Append library media URLs
+        // Append library media URLs and their real Supabase IDs
         for (const url of mediaUrls) {
           formData.append("mediaUrls", url);
+        }
+        for (const id of mediaIds) {
+          formData.append("mediaIds", id);
         }
 
         // Convert each base64 media item to a Blob and append as "files"
@@ -256,8 +264,14 @@ export default function Processing() {
           sentiment: post.sentiment,
           is_optimized: post.isOptimized,
           thumbnail: post.thumbnail || null,
-          media_id: null, // Media IDs from IndexedDB don't match Supabase UUIDs
+          media_id: post.realMediaId || null, // Use real Supabase UUID for library items
         }));
+
+        if (addToPlanId) {
+          // Add posts to existing plan
+          await addPostsToPlanApi(addToPlanId, postData);
+          return { id: addToPlanId } as { id: string };
+        }
 
         const result = await createPlanApi({
           name: data.planName,
@@ -287,6 +301,8 @@ export default function Processing() {
       sessionStorage.removeItem("postagen-weeklyContext");
       sessionStorage.removeItem("postagen-specialMessage");
       sessionStorage.removeItem("postagen-mediaUrls");
+      sessionStorage.removeItem("postagen-mediaIds");
+      sessionStorage.removeItem("postagen-addToPlanId");
 
       setTimeout(() => {
         router.push(`/plan/${newPlan.id}`);

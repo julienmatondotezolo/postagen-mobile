@@ -315,12 +315,15 @@ export default function MediaUpload() {
         await saveMedia(file);
       }
 
-      // Store selected library URLs in sessionStorage
+      // Store selected library URLs and IDs in sessionStorage
       if (selectedLibraryUrls.size > 0) {
         const selectedUrls = Array.from(selectedLibraryUrls.values());
+        const selectedIds = Array.from(selectedLibraryUrls.keys());
         sessionStorage.setItem("postagen-mediaUrls", JSON.stringify(selectedUrls));
+        sessionStorage.setItem("postagen-mediaIds", JSON.stringify(selectedIds));
       } else {
         sessionStorage.removeItem("postagen-mediaUrls");
+        sessionStorage.removeItem("postagen-mediaIds");
       }
 
       toast.success(t("upload.ready"), { id: "saving", duration: 2000 });

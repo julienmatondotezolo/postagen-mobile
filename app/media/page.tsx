@@ -43,6 +43,7 @@ export default function MediaPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderColor, setNewFolderColor] = useState(FOLDER_COLORS[0]);
   const [showFolderMenu, setShowFolderMenu] = useState<string | null>(null);
+  const [folderMenuPos, setFolderMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<Folder | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -380,7 +381,14 @@ export default function MediaPage() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setShowFolderMenu(showFolderMenu === folder.id ? null : folder.id);
+                      if (showFolderMenu === folder.id) {
+                        setShowFolderMenu(null);
+                        setFolderMenuPos(null);
+                      } else {
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        setFolderMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                        setShowFolderMenu(folder.id);
+                      }
                     }}
                     onPointerDown={(e) => e.stopPropagation()}
                     className="absolute top-1.5 right-0.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/5 text-gray-500 active:bg-black/10 transition-colors"
@@ -412,16 +420,20 @@ export default function MediaPage() {
                   )}
 
                   {/* Dropdown menu */}
-                  {showFolderMenu === folder.id && (
+                  {showFolderMenu === folder.id && folderMenuPos && (
                     <>
-                      <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setShowFolderMenu(null); }} />
-                      <div className="absolute top-full right-0 mt-1 z-50 w-40 rounded-xl bg-white shadow-xl border border-gray-100 py-1">
+                      <div className="fixed inset-0 z-[100]" onClick={(e) => { e.stopPropagation(); setShowFolderMenu(null); setFolderMenuPos(null); }} />
+                      <div
+                        className="fixed z-[101] w-40 rounded-xl bg-white shadow-xl border border-gray-100 py-1"
+                        style={{ top: folderMenuPos.top, right: folderMenuPos.right }}
+                      >
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setRenamingFolder(folder);
                             setRenameValue(folder.name);
                             setShowFolderMenu(null);
+                            setFolderMenuPos(null);
                           }}
                           className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                         >
@@ -436,6 +448,7 @@ export default function MediaPage() {
                             e.stopPropagation();
                             handleShareFolder(folder.id);
                             setShowFolderMenu(null);
+                            setFolderMenuPos(null);
                           }}
                           className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                         >
@@ -450,6 +463,7 @@ export default function MediaPage() {
                             e.stopPropagation();
                             setFolderToDelete(folder.id);
                             setShowFolderMenu(null);
+                            setFolderMenuPos(null);
                           }}
                           className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
                         >

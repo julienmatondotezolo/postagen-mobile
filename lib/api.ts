@@ -275,6 +275,20 @@ export async function updatePlanApi(id: string, updates: Record<string, unknown>
   return res.json();
 }
 
+export async function addPostsToPlanApi(
+  planId: string,
+  posts: Array<Record<string, unknown>>
+): Promise<{ posts: ApiPost[] }> {
+  const res = await fetch(`${API_BASE_URL}/api/plans/${planId}/posts`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ posts }),
+  });
+  if (!res.ok) throw new Error("Failed to add posts to plan");
+  return res.json();
+}
+
 export async function deletePlanApi(id: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/plans/${id}`, {
     method: "DELETE",

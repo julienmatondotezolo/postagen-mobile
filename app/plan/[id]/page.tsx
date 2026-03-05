@@ -344,12 +344,14 @@ export default function VisualPlan() {
                 );
               })}
 
-              {/* Add More Days Button */}
+              {/* Add Posts Button */}
               <button
                 className="shrink-0 flex items-center justify-center w-16 h-24 rounded-[32px] bg-pink-500 text-white shadow-lg hover:bg-pink-600 hover:scale-105 hover:shadow-xl transition-all active:scale-95"
                 onClick={() => {
-                  console.log("Add more days");
+                  sessionStorage.setItem("postagen-addToPlanId", planId);
+                  router.push("/upload");
                 }}
+                title={t("plan.addPosts")}
               >
                 <svg
                   className="h-6 w-6"

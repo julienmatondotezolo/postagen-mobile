@@ -136,7 +136,8 @@
     "copied": "Légende copiée !",
     "copyCaption": "Copier la légende",
     "scheduledFor": "Planifié pour",
-    "noMedia": "Aucun média attaché"
+    "noMedia": "Aucun média attaché",
+    "addPosts": "Ajouter des posts"
   },
   "calendar": {
     "title": "Calendrier",
