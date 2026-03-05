@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 interface NavItem {
   label: string;
@@ -14,6 +15,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useI18n();
+  const haptics = useHaptics();
 
   // Hide nav on wizard flow pages, processing, and auth pages
   if (pathname.startsWith("/create") || pathname === "/upload" || pathname === "/context" || pathname === "/processing" || pathname.startsWith("/auth") || pathname === "/media/swipe" || pathname.startsWith("/share")) {
@@ -156,7 +158,7 @@ export default function BottomNav() {
             return (
               <button
                 key={index}
-                onClick={() => router.push(item.path)}
+                onClick={() => { haptics.tap(); router.push(item.path); }}
                 className="relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-[#8B5CF6] shadow-lg shadow-purple-300/50 transition-all hover:scale-110 hover:shadow-xl hover:shadow-purple-400/50 active:scale-95"
               >
                 <div className="text-white">{item.icon(false)}</div>
@@ -167,7 +169,7 @@ export default function BottomNav() {
           return (
             <button
               key={index}
-              onClick={() => router.push(item.path)}
+              onClick={() => { haptics.tap(); router.push(item.path); }}
               className="flex flex-col items-center gap-0.5 py-1 px-3 transition-all"
             >
               <div

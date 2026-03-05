@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMedia, getFolders, updateMediaStatus, type MediaRecord } from "@/lib/api";
 import SwipeCard from "@/components/SwipeCard";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 import toast from "react-hot-toast";
 
 export default function SwipePage() {
@@ -16,6 +17,7 @@ export default function SwipePage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fullscreenMedia, setFullscreenMedia] = useState<MediaRecord | null>(null);
   const historyRef = useRef<Array<{ id: string; index: number }>>([]);
+  const haptics = useHaptics();
 
   const folderId = searchParams.get("folderId");
   const isUnsorted = searchParams.get("folder") === "unsorted" || !folderId;
@@ -48,6 +50,7 @@ export default function SwipePage() {
 
       const item = media[currentIndex];
       const newStatus = direction === "right" ? "liked" : "unliked";
+      if (direction === "right") haptics.success(); else haptics.error();
 
       historyRef.current.push({ id: item.id, index: currentIndex });
       setCurrentIndex((prev) => prev + 1);
@@ -68,6 +71,7 @@ export default function SwipePage() {
   const handleUndo = useCallback(async () => {
     const last = historyRef.current.pop();
     if (!last) return;
+    haptics.tap();
 
     setCurrentIndex(last.index);
 

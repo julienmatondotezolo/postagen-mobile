@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import type { MediaRecord } from "@/lib/api";
+import { useHaptics } from "@/lib/haptics";
 
 interface SwipeCardProps {
   media: MediaRecord;
@@ -15,6 +16,7 @@ export default function SwipeCard({ media, onSwipe, onTap, isTop }: SwipeCardPro
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const startPos = useRef({ x: 0, y: 0 });
+  const haptics = useHaptics();
 
   const SWIPE_THRESHOLD = 100;
 
@@ -45,6 +47,7 @@ export default function SwipeCard({ media, onSwipe, onTap, isTop }: SwipeCardPro
 
     if (Math.abs(offset.x) > SWIPE_THRESHOLD) {
       const direction = offset.x > 0 ? "right" : "left";
+      haptics.swipe();
       // Animate out
       const flyX = offset.x > 0 ? 500 : -500;
       setOffset({ x: flyX, y: offset.y });
@@ -52,6 +55,7 @@ export default function SwipeCard({ media, onSwipe, onTap, isTop }: SwipeCardPro
     } else if (Math.abs(offset.x) < TAP_THRESHOLD && Math.abs(offset.y) < TAP_THRESHOLD) {
       // It was a tap, not a drag
       setOffset({ x: 0, y: 0 });
+      haptics.tap();
       onTap?.();
     } else {
       // Snap back

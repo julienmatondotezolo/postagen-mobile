@@ -20,6 +20,7 @@ import {
   type FolderStats,
 } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 import toast from "react-hot-toast";
 
 type ActiveFolder = { type: "unsorted" } | { type: "custom"; folderId: string };
@@ -31,6 +32,7 @@ export default function MediaPage() {
   const { t } = useI18n();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const haptics = useHaptics();
 
   const [activeFolder, setActiveFolder] = useState<ActiveFolder>({ type: "unsorted" });
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -105,6 +107,7 @@ export default function MediaPage() {
     (id: string) => {
       longPressTimerRef.current = setTimeout(() => {
         if (!isSelectionMode) {
+          haptics.success();
           setIsSelectionMode(true);
           setSelectedIds(new Set([id]));
         }
@@ -150,6 +153,7 @@ export default function MediaPage() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
+    haptics.error();
     setIsDeleting(true);
     try {
       await bulkDeleteMedia(Array.from(selectedIds));
@@ -231,6 +235,7 @@ export default function MediaPage() {
 
   const handleToggleShare = async () => {
     if (!shareModal) return;
+    haptics.tap();
     setIsTogglingShare(true);
     try {
       const result = await updateShareFolder(shareModal.folderId, !shareModal.isActive);
@@ -247,6 +252,7 @@ export default function MediaPage() {
     if (!shareModal) return;
     const url = `${window.location.origin}/share/${shareModal.token}`;
     await navigator.clipboard.writeText(url);
+    haptics.success();
     toast.success(t("media.shareLinkCopied"));
   };
 

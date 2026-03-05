@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getSharedFolder, getShareVotes, submitShareVote, type MediaRecord } from "@/lib/api";
 import SwipeCard from "@/components/SwipeCard";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 import toast from "react-hot-toast";
 
 export default function ShareSwipePage() {
@@ -18,6 +19,7 @@ export default function ShareSwipePage() {
   const [fullscreenMedia, setFullscreenMedia] = useState<MediaRecord | null>(null);
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
   const historyRef = useRef<Array<{ mediaId: string; index: number }>>([]);
+  const haptics = useHaptics();
 
   // Check sessionStorage for existing name
   useEffect(() => {
@@ -69,6 +71,7 @@ export default function ShareSwipePage() {
 
       const item = unvotedMedia[currentIndex];
       const vote = direction === "right" ? "liked" : "unliked";
+      if (direction === "right") haptics.success(); else haptics.error();
 
       historyRef.current.push({ mediaId: item.id, index: currentIndex });
       setCurrentIndex((prev) => prev + 1);
@@ -89,6 +92,7 @@ export default function ShareSwipePage() {
   const handleUndo = useCallback(() => {
     const last = historyRef.current.pop();
     if (!last) return;
+    haptics.tap();
     setCurrentIndex(last.index);
     // Note: for share swipe we don't delete the vote from DB — the next swipe will upsert/overwrite
   }, []);
