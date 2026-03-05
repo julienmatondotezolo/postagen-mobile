@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getSharedFolder, getShareVotes, submitShareVote, type MediaRecord } from "@/lib/api";
 import SwipeCard from "@/components/SwipeCard";
 import { useI18n } from "@/lib/i18n";
@@ -12,8 +12,6 @@ export default function ShareSwipePage() {
   const { t } = useI18n();
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
-  const queryClient = useQueryClient();
-
   const [voterName, setVoterName] = useState<string>("");
   const [nameSubmitted, setNameSubmitted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -42,9 +40,11 @@ export default function ShareSwipePage() {
     enabled: nameSubmitted && !!voterName,
   });
 
-  // Build list of already-voted media IDs
+  // Build list of already-voted media IDs (only on initial load)
+  const initialVotesLoaded = useRef(false);
   useEffect(() => {
-    if (existingVotes?.votes) {
+    if (existingVotes?.votes && !initialVotesLoaded.current) {
+      initialVotesLoaded.current = true;
       setVotedIds(new Set(existingVotes.votes.map((v) => v.media_id)));
     }
   }, [existingVotes]);
@@ -78,12 +78,11 @@ export default function ShareSwipePage() {
           media_id: item.id,
           vote,
         });
-        queryClient.invalidateQueries({ queryKey: ["share-votes", token, voterName] });
       } catch {
         toast.error(t("share.voteError"));
       }
     },
-    [unvotedMedia, currentIndex, token, voterName, queryClient, t]
+    [unvotedMedia, currentIndex, token, voterName, t]
   );
 
   const handleUndo = useCallback(() => {

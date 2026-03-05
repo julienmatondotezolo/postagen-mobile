@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.replace("/auth/login");
       } else if (user && !user.email_verified && pathname !== "/auth/verify-required" && pathname !== "/auth/verify-email") {
         router.replace("/auth/verify-required");
-      } else if (user && user.email_verified && isPublicRoute && pathname !== "/auth/verify-email") {
+      } else if (user && user.email_verified && isPublicRoute && pathname !== "/auth/verify-email" && !pathname.startsWith("/share")) {
         router.replace("/home");
       }
     }
