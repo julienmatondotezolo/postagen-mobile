@@ -16,7 +16,7 @@ export default function BottomNav() {
   const { t } = useI18n();
 
   // Hide nav on wizard flow pages, processing, and auth pages
-  if (pathname.startsWith("/create") || pathname === "/upload" || pathname === "/processing" || pathname.startsWith("/auth")) {
+  if (pathname.startsWith("/create") || pathname === "/upload" || pathname === "/context" || pathname === "/processing" || pathname.startsWith("/auth") || pathname === "/media/swipe") {
     return null;
   }
 
@@ -139,7 +139,8 @@ export default function BottomNav() {
         pathname === "/home" ||
         pathname === "/plans" ||
         pathname.startsWith("/plan/") ||
-        pathname.startsWith("/post/")
+        pathname.startsWith("/post/") ||
+        pathname === "/media"
       );
     }
     return pathname === path || pathname.startsWith(path + "/");

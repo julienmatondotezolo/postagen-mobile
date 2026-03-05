@@ -134,12 +134,16 @@ export default function Processing() {
     mutationFn: async () => {
       
       const mediaFiles = await getAllMedia();
-      if (mediaFiles.length === 0) {
+      const mediaUrlsCheck = sessionStorage.getItem("postagen-mediaUrls");
+      let mediaUrlCount = 0;
+      try { mediaUrlCount = JSON.parse(mediaUrlsCheck || "[]").length; } catch {}
+
+      if (mediaFiles.length === 0 && mediaUrlCount === 0) {
         router.push("/upload");
         throw new Error("No media files");
       }
 
-      imageCountRef.current = mediaFiles.length;
+      imageCountRef.current = mediaFiles.length + mediaUrlCount;
       startTimeRef.current = Date.now();
       apiDoneRef.current = false;
 
@@ -148,6 +152,14 @@ export default function Processing() {
 
       // --- Fetch brand identity from IndexedDB ---
       const brandIdentity = await getBrandIdentity();
+
+        // --- Read context from sessionStorage ---
+        const language = sessionStorage.getItem("postagen-language") || "nl";
+        const weeklyContext = sessionStorage.getItem("postagen-weeklyContext") || "";
+        const specialMessage = sessionStorage.getItem("postagen-specialMessage") || "";
+        const mediaUrlsJson = sessionStorage.getItem("postagen-mediaUrls") || "[]";
+        let mediaUrls: string[] = [];
+        try { mediaUrls = JSON.parse(mediaUrlsJson); } catch {}
 
         // --- Build FormData (multipart/form-data) ---
         const formData = new FormData();
@@ -161,6 +173,16 @@ export default function Processing() {
             businessName: brandIdentity?.businessName,
           })
         );
+
+        // Append context fields
+        formData.append("language", language);
+        if (weeklyContext) formData.append("weeklyContext", weeklyContext);
+        if (specialMessage) formData.append("specialMessage", specialMessage);
+
+        // Append library media URLs
+        for (const url of mediaUrls) {
+          formData.append("mediaUrls", url);
+        }
 
         // Convert each base64 media item to a Blob and append as "files"
         for (const m of mediaFiles) {
@@ -271,6 +293,12 @@ export default function Processing() {
       }
     },
     onSuccess: (newPlan) => {
+      // Clean up sessionStorage
+      sessionStorage.removeItem("postagen-language");
+      sessionStorage.removeItem("postagen-weeklyContext");
+      sessionStorage.removeItem("postagen-specialMessage");
+      sessionStorage.removeItem("postagen-mediaUrls");
+
       setTimeout(() => {
         router.push(`/plan/${newPlan.id}`);
       }, 800);
