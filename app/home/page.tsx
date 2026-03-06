@@ -91,7 +91,11 @@ export default function HomePage() {
   const handleFolderSelect = (folderId: string) => {
     setShowFolderSelect(false);
     if (pendingFiles.length > 0) {
-      upload.startUpload(pendingFiles, folderId);
+      upload.startUpload(pendingFiles, folderId, (event) => {
+        if (event === "done") haptics.tap();
+        else if (event === "error") haptics.error();
+        else if (event === "allDone") { haptics.magic(); navigator.vibrate?.([100, 50, 100, 50, 200]); }
+      });
       setPendingFiles([]);
     }
   };

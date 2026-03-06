@@ -120,7 +120,8 @@
     "noMedia": "No valid media found. Upload at least one photo or video.",
     "noResults": "The AI could not generate posts. Please try again.",
     "timeout": "Processing took too long. Try again with fewer photos.",
-    "error": "An unexpected error occurred."
+    "error": "An unexpected error occurred.",
+    "viewPlan": "View plan"
   },
   "plan": {
     "title": "Visual Plan",

@@ -1,19 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
-import {
-  getAllMedia,
-  getBrandIdentity,
-  updateMedia,
-} from "@/lib/db";
-import { createPlanApi, addPostsToPlanApi, apiFetch } from "@/lib/api";
-import { API_BASE_URL } from "@/lib/config";
-import toast from "react-hot-toast";
-import confetti from "canvas-confetti";
+import { useEffect, useRef } from "react";
+import { useGeneration } from "@/lib/generation";
 import { useI18n } from "@/lib/i18n";
 import { useHaptics } from "@/lib/haptics";
+import confetti from "canvas-confetti";
 
 function getAnalysisSteps(t: (key: string) => string) {
   return [
@@ -25,332 +17,62 @@ function getAnalysisSteps(t: (key: string) => string) {
   ];
 }
 
-interface GenerateResponsePost {
-  id: string;
-  mediaId: string;
-  realMediaId?: string | null; // Real Supabase UUID for library items
-  caption: string;
-  hashtags: string[];
-  scheduledDate: string;
-  scheduledTime: string;
-  dayName: string;
-  sentiment: "Very Positive" | "Positive" | "Neutral" | "Negative";
-  isOptimized: boolean;
-  createdAt: number;
-  thumbnail?: string; // For videos: extracted frame as thumbnail
-}
-
-interface ConvertedVideo {
-  id: string;
-  base64: string;
-  mimeType: string;
-  type: "video";
-}
-
-interface GenerateResponse {
-  posts: GenerateResponsePost[];
-  planName: string;
-  planDescription: string;
-  convertedVideos?: ConvertedVideo[];
-}
-
-const API_TIMEOUT_MS = 120_000; // 120 seconds — GPT Vision can be slow with 10+ images
-
-/**
- * Convert a base64 data URL to a Blob.
- */
-function base64ToBlob(dataUrl: string): Blob {
-  const [header, data] = dataUrl.split(",");
-  const mimeMatch = header.match(/data:([^;]+)/);
-  const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
-  const binary = atob(data);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return new Blob([bytes], { type: mime });
-}
-
-/**
- * Get a file extension from a MIME type.
- */
-function extFromMime(mime: string): string {
-  const map: Record<string, string> = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/heic": ".heic",
-    "image/heif": ".heif",
-    "image/webp": ".webp",
-    "video/mp4": ".mp4",
-    "video/quicktime": ".mov",
-    "video/webm": ".webm",
-  };
-  return map[mime] || ".bin";
-}
-
 export default function Processing() {
   const { t } = useI18n();
   const router = useRouter();
   const haptics = useHaptics();
+  const generation = useGeneration();
+  const hasStartedRef = useRef(false);
+  const hasRedirectedRef = useRef(false);
+
   const ANALYSIS_STEPS = getAnalysisSteps(t);
-  const [progress, setProgress] = useState(0);
-  const [currentStepText, setCurrentStepText] = useState(ANALYSIS_STEPS[0].text);
-  const apiDoneRef = useRef(false);
-  const animFrameRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);
-  const imageCountRef = useRef<number>(1);
-  const hasMutatedRef = useRef(false); // Prevent double-trigger from React 18 Strict Mode
 
-  /**
-   * Exponential-decay progress animation.
-   */
-  const runProgressAnimation = useCallback(() => {
-    const steps = getAnalysisSteps(t);
-    const tick = () => {
-      if (apiDoneRef.current) return;
+  // Start generation on mount (once)
+  useEffect(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
 
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      const imgCount = imageCountRef.current;
+    if (generation.status === "idle") {
+      generation.startGeneration();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-      const estimatedTotal = imgCount <= 3 ? 12 : imgCount <= 5 ? 20 : 30;
-      const k = 2.5 / estimatedTotal;
-      const newProgress = Math.min(90, 90 * (1 - Math.exp(-k * elapsed)));
-
-      setProgress(newProgress);
-
-      for (let i = steps.length - 1; i >= 0; i--) {
-        if (newProgress >= steps[i].threshold) {
-          setCurrentStepText(steps[i].text);
-          break;
-        }
-      }
-
-      animFrameRef.current = requestAnimationFrame(tick);
-    };
-
-    animFrameRef.current = requestAnimationFrame(tick);
-  }, [t]);
-
-  // TanStack Query mutation - automatically prevents duplicate requests
-  const mutation = useMutation({
-    mutationFn: async () => {
-      
-      const mediaFiles = await getAllMedia();
-      const mediaUrlsCheck = sessionStorage.getItem("postagen-mediaUrls");
-      let mediaUrlCount = 0;
-      try { mediaUrlCount = JSON.parse(mediaUrlsCheck || "[]").length; } catch {}
-
-      if (mediaFiles.length === 0 && mediaUrlCount === 0) {
-        router.push("/upload");
-        throw new Error("No media files");
-      }
-
-      imageCountRef.current = mediaFiles.length + mediaUrlCount;
-      startTimeRef.current = Date.now();
-      apiDoneRef.current = false;
-
-      // Start the smooth progress animation
-      runProgressAnimation();
-
-      // --- Fetch brand identity from IndexedDB ---
-      const brandIdentity = await getBrandIdentity();
-
-        // --- Read context from sessionStorage ---
-        const language = sessionStorage.getItem("postagen-language") || "nl";
-        const weeklyContext = sessionStorage.getItem("postagen-weeklyContext") || "";
-        const specialMessage = sessionStorage.getItem("postagen-specialMessage") || "";
-        const mediaUrlsJson = sessionStorage.getItem("postagen-mediaUrls") || "[]";
-        const mediaIdsJson = sessionStorage.getItem("postagen-mediaIds") || "[]";
-        const addToPlanId = sessionStorage.getItem("postagen-addToPlanId");
-        let mediaUrls: string[] = [];
-        let mediaIds: string[] = [];
-        try { mediaUrls = JSON.parse(mediaUrlsJson); } catch {}
-        try { mediaIds = JSON.parse(mediaIdsJson); } catch {}
-
-        // --- Build FormData (multipart/form-data) ---
-        const formData = new FormData();
-
-        // Append brandIdentity as JSON string
-        formData.append(
-          "brandIdentity",
-          JSON.stringify({
-            websiteUrl: brandIdentity?.websiteUrl,
-            description: brandIdentity?.description,
-            businessName: brandIdentity?.businessName,
-          })
-        );
-
-        // Append context fields
-        formData.append("language", language);
-        if (weeklyContext) formData.append("weeklyContext", weeklyContext);
-        if (specialMessage) formData.append("specialMessage", specialMessage);
-
-        // Append library media URLs and their real Supabase IDs
-        for (const url of mediaUrls) {
-          formData.append("mediaUrls", url);
-        }
-        for (const id of mediaIds) {
-          formData.append("mediaIds", id);
-        }
-
-        // Convert each base64 media item to a Blob and append as "files"
-        for (const m of mediaFiles) {
-          const blob = base64ToBlob(m.base64);
-          const filename = `${m.id}${extFromMime(m.mimeType)}`;
-          formData.append("files", blob, filename);
-        }
-
-      // --- API call with timeout ---
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-
-      try {
-        const response = await apiFetch(`${API_BASE_URL}/api/generate`, {
-          method: "POST",
-          body: formData,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => "");
-          console.error(`API error ${response.status}: ${errorText}`);
-
-          let errorMessage: string;
-          if (response.status === 413) {
-            errorMessage = t("processing.tooLarge");
-          } else if (response.status === 400) {
-            errorMessage = t("processing.noMedia");
-          } else {
-            errorMessage = `${t("processing.error")} (${response.status})`;
-          }
-          throw new Error(errorMessage);
-        }
-
-        const data: GenerateResponse = await response.json();
-
-        // --- Validate response ---
-        if (!data.posts || data.posts.length === 0) {
-          throw new Error(t("processing.noResults"));
-        }
-
-        // --- IMMEDIATELY jump to 100% ---
-        apiDoneRef.current = true;
-        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-        setProgress(100);
-        setCurrentStepText(t("processing.done"));
-
-        // --- Update IndexedDB with converted MP4 videos ---
-        if (data.convertedVideos && data.convertedVideos.length > 0) {
-          for (const video of data.convertedVideos) {
-            try {
-              await updateMedia({
-                id: video.id,
-                base64: video.base64,
-                mimeType: video.mimeType,
-                type: video.type,
-              });
-            } catch (err) {
-              console.error(`❌ Failed to update video ${video.id}:`, err);
-            }
-          }
-        }
-
-        // --- Create plan + posts via API ---
-        const postData = data.posts.map((post) => ({
-          caption: post.caption,
-          hashtags: post.hashtags,
-          scheduled_date: post.scheduledDate,
-          scheduled_time: post.scheduledTime,
-          day_name: post.dayName,
-          sentiment: post.sentiment,
-          is_optimized: post.isOptimized,
-          thumbnail: post.thumbnail || null,
-          media_id: post.realMediaId || null, // Use real Supabase UUID for library items
-        }));
-
-        if (addToPlanId) {
-          // Add posts to existing plan
-          await addPostsToPlanApi(addToPlanId, postData);
-          return { id: addToPlanId } as { id: string };
-        }
-
-        const result = await createPlanApi({
-          name: data.planName,
-          description: data.planDescription,
-          status: "Draft",
-          posts: postData,
-        });
-
-        return result.plan;
-      } catch (fetchError: unknown) {
-        clearTimeout(timeoutId);
-        apiDoneRef.current = true;
-        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-
-        if (
-          fetchError instanceof DOMException &&
-          fetchError.name === "AbortError"
-        ) {
-          throw new Error(t("processing.timeout"));
-        }
-        throw fetchError;
-      }
-    },
-    onSuccess: (newPlan) => {
-      // Clean up sessionStorage
-      sessionStorage.removeItem("postagen-language");
-      sessionStorage.removeItem("postagen-weeklyContext");
-      sessionStorage.removeItem("postagen-specialMessage");
-      sessionStorage.removeItem("postagen-mediaUrls");
-      sessionStorage.removeItem("postagen-mediaIds");
-      sessionStorage.removeItem("postagen-addToPlanId");
-
-      // Celebration
+  // Redirect on completion
+  useEffect(() => {
+    if (generation.status === "done" && generation.planId && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
       haptics.magic();
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 }, colors: ["#8B5CF6", "#FFD700", "#EC4899", "#A855F7"] });
       setTimeout(() => {
         confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 }, colors: ["#8B5CF6", "#FFD700"] });
         confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 }, colors: ["#EC4899", "#A855F7"] });
       }, 250);
-
       setTimeout(() => {
-        router.push(`/plan/${newPlan.id}`);
+        generation.dismiss();
+        router.push(`/plan/${generation.planId}`);
       }, 800);
-    },
-    onError: (error: Error) => {
-      haptics.error();
-      toast.error(error.message || t("processing.error"), {
-        duration: 6000,
-      });
-    },
-  });
+    }
+  }, [generation, haptics, router]);
 
-  // Trigger mutation on mount — ONCE only (React 18 Strict Mode calls useEffect twice)
-  useEffect(() => {
-    if (hasMutatedRef.current) return;
-    hasMutatedRef.current = true;
-    mutation.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Cleanup animation on unmount
-  useEffect(() => {
-    return () => {
-      apiDoneRef.current = true;
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, []);
+  // Derive step text from progress
+  let currentStepText = ANALYSIS_STEPS[0].text;
+  for (let i = ANALYSIS_STEPS.length - 1; i >= 0; i--) {
+    if (generation.progress >= ANALYSIS_STEPS[i].threshold) {
+      currentStepText = ANALYSIS_STEPS[i].text;
+      break;
+    }
+  }
+  if (generation.status === "done") {
+    currentStepText = t("processing.done");
+  }
 
   const handleRetry = () => {
-    mutation.reset();
-    setProgress(0);
-    setCurrentStepText(getAnalysisSteps(t)[0].text);
-    hasMutatedRef.current = false; // Allow retry
-    hasMutatedRef.current = true;  // Mark as triggered
-    mutation.mutate();
+    haptics.tap();
+    generation.retry();
   };
+
+  const progress = generation.status === "done" ? 100 : generation.progress;
 
   return (
     <div className="min-h-screen bg-mood-processing flex items-center justify-center px-6">
@@ -361,7 +83,7 @@ export default function Processing() {
             <div className="absolute inset-0 animate-pulse rounded-full bg-purple-200/40 blur-3xl scale-150"></div>
             <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-2xl shadow-purple-100">
               <div className="flex items-center justify-center gap-1">
-                {mutation.isError ? (
+                {generation.status === "error" ? (
                   <svg
                     className="h-10 w-10 text-red-500"
                     fill="none"
@@ -396,18 +118,18 @@ export default function Processing() {
         </div>
 
         {/* Title */}
-        {mutation.isError ? (
+        {generation.status === "error" ? (
           <>
             <h1 className="mb-6 text-4xl font-bold text-gray-900">Oeps!</h1>
             <h2 className="mb-6 text-2xl font-serif italic font-normal text-red-500">
               Er ging iets mis
             </h2>
             <p className="mb-8 text-base text-gray-600 font-medium">
-              Controleer je verbinding en probeer het opnieuw.
+              {generation.error || "Controleer je verbinding en probeer het opnieuw."}
             </p>
             <div className="space-y-3">
               <button
-                onClick={() => { haptics.tap(); handleRetry(); }}
+                onClick={handleRetry}
                 className="w-full rounded-2xl bg-[#8B5CF6] px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-purple-200 transition-all hover:bg-purple-600 hover:shadow-2xl hover:shadow-purple-300 hover:-translate-y-0.5 active:scale-[0.98]"
               >
                 {t("common.retry")}

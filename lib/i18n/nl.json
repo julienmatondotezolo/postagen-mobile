@@ -120,7 +120,8 @@
     "noMedia": "Geen geldige media gevonden. Upload minstens één foto of video.",
     "noResults": "De AI heeft geen posts kunnen genereren. Probeer het opnieuw.",
     "timeout": "De verwerking duurde te lang. Probeer het opnieuw met minder foto's.",
-    "error": "Er is een onverwachte fout opgetreden."
+    "error": "Er is een onverwachte fout opgetreden.",
+    "viewPlan": "Bekijk plan"
   },
   "plan": {
     "title": "Visual Plan",

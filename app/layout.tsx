@@ -6,7 +6,9 @@ import QueryProvider from "@/components/QueryProvider";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth";
 import { UploadProvider } from "@/lib/upload";
+import { GenerationProvider } from "@/lib/generation";
 import UploadPopup from "@/components/UploadPopup";
+import GenerationPopup from "@/components/GenerationPopup";
 import "./globals.css";
 
 const inter = Inter({
@@ -59,10 +61,13 @@ export default function RootLayout({
           <QueryProvider>
             <AuthProvider>
               <UploadProvider>
-                <ToastProvider />
-                {children}
-                <UploadPopup />
-                <BottomNav />
+                <GenerationProvider>
+                  <ToastProvider />
+                  {children}
+                  <UploadPopup />
+                  <GenerationPopup />
+                  <BottomNav />
+                </GenerationProvider>
               </UploadProvider>
             </AuthProvider>
           </QueryProvider>

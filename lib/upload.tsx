@@ -21,8 +21,10 @@ interface UploadState {
   showDoneMessage: boolean;
 }
 
+type UploadFileEvent = "done" | "error" | "allDone";
+
 interface UploadContextValue extends UploadState {
-  startUpload: (files: File[], folderId: string) => void;
+  startUpload: (files: File[], folderId: string, onFileComplete?: (event: UploadFileEvent) => void) => void;
   dismissPopup: () => void;
   minimizePopup: () => void;
   expandPopup: () => void;
@@ -52,11 +54,13 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<UploadState>(initialState);
   const queryClient = useQueryClient();
   const uploadingRef = useRef(false);
+  const onFileCompleteRef = useRef<((event: UploadFileEvent) => void) | undefined>(undefined);
 
   const startUpload = useCallback(
-    (files: File[], folderId: string) => {
+    (files: File[], folderId: string, onFileComplete?: (event: UploadFileEvent) => void) => {
       if (uploadingRef.current) return;
       uploadingRef.current = true;
+      onFileCompleteRef.current = onFileComplete;
 
       const uploadFiles: UploadFile[] = files.map((f) => ({
         name: f.name,
@@ -101,6 +105,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
                 idx === i ? { ...f, status: "done", file: null } : f
               ),
             }));
+            onFileCompleteRef.current?.("done");
           } catch {
             completed++;
             setState((prev) => ({
@@ -110,10 +115,12 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
                 idx === i ? { ...f, status: "error", file: null } : f
               ),
             }));
+            onFileCompleteRef.current?.("error");
           }
         }
 
         // Done
+        onFileCompleteRef.current?.("allDone");
         setState((prev) => ({
           ...prev,
           isUploading: false,
@@ -122,6 +129,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           popupMinimized: false,
         }));
         uploadingRef.current = false;
+        onFileCompleteRef.current = undefined;
 
         // Invalidate queries
         queryClient.invalidateQueries({ queryKey: ["media-stats"] });

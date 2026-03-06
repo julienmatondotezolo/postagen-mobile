@@ -120,7 +120,8 @@
     "noMedia": "Aucun média valide trouvé. Téléchargez au moins une photo ou vidéo.",
     "noResults": "L'IA n'a pas pu générer de posts. Réessayez.",
     "timeout": "Le traitement a pris trop de temps. Réessayez avec moins de photos.",
-    "error": "Une erreur inattendue s'est produite."
+    "error": "Une erreur inattendue s'est produite.",
+    "viewPlan": "Voir le plan"
   },
   "plan": {
     "title": "Plan Visuel",

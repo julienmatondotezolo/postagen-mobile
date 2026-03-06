@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     const result = await login(email, password);
     if (result.error) {
-      haptics.error();
+      haptics.longError();
       setError(result.error);
       setIsSubmitting(false);
     } else {
