@@ -71,7 +71,7 @@ export default function ShareSwipePage() {
 
       const item = unvotedMedia[currentIndex];
       const vote = direction === "right" ? "liked" : "unliked";
-      if (direction === "right") haptics.success(); else haptics.error();
+      if (direction === "right") haptics.like(); else haptics.dislike();
 
       historyRef.current.push({ mediaId: item.id, index: currentIndex });
       setCurrentIndex((prev) => prev + 1);
@@ -141,7 +141,7 @@ export default function ShareSwipePage() {
             onKeyDown={(e) => e.key === "Enter" && handleNameSubmit()}
           />
           <button
-            onClick={handleNameSubmit}
+            onClick={() => { haptics.tap(); handleNameSubmit(); }}
             disabled={!voterName.trim()}
             className="w-full rounded-2xl bg-purple-600 py-4 text-sm font-bold text-white shadow-lg disabled:opacity-50"
           >
@@ -157,7 +157,7 @@ export default function ShareSwipePage() {
       {/* Header */}
       <div className="relative z-20 flex items-center justify-between px-6 pt-8 pb-4">
         <button
-          onClick={() => router.push(`/share/${token}`)}
+          onClick={() => { haptics.tap(); router.push(`/share/${token}`); }}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
         >
           <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -185,7 +185,7 @@ export default function ShareSwipePage() {
             <h2 className="mb-2 text-2xl font-bold text-white">{t("share.allDone")}</h2>
             <p className="text-white/50">{t("share.allDoneDesc")}</p>
             <button
-              onClick={() => router.push(`/share/${token}`)}
+              onClick={() => { haptics.tap(); router.push(`/share/${token}`); }}
               className="mt-8 rounded-2xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg"
             >
               {t("share.backToGallery")}
@@ -241,10 +241,10 @@ export default function ShareSwipePage() {
       {fullscreenMedia && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
-          onClick={() => setFullscreenMedia(null)}
+          onClick={() => { haptics.tap(); setFullscreenMedia(null); }}
         >
           <button
-            onClick={() => setFullscreenMedia(null)}
+            onClick={() => { haptics.tap(); setFullscreenMedia(null); }}
             className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
           >
             <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

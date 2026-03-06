@@ -64,7 +64,7 @@ export default function ContextPage() {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <button
-            onClick={() => router.back()}
+            onClick={() => { haptics.tap(); router.back(); }}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm"
           >
             <svg className="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">

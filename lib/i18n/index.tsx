@@ -45,6 +45,12 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem(LOCALE_KEY) as Locale | null;
     if (saved && (saved === "nl" || saved === "fr" || saved === "en")) {
       setLocaleState(saved);
+    } else {
+      // Detect device language
+      const browserLang = navigator.language?.split("-")[0]?.toLowerCase();
+      if (browserLang === "nl" || browserLang === "fr" || browserLang === "en") {
+        setLocaleState(browserLang);
+      }
     }
   }, []);
 

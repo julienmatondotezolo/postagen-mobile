@@ -74,7 +74,7 @@ export default function ShareGalleryPage() {
               <div
                 key={item.id}
                 className="relative aspect-square overflow-hidden rounded-2xl bg-gray-100 shadow-sm cursor-pointer"
-                onClick={() => setFullscreenIndex(media.indexOf(item))}
+                onClick={() => { haptics.tap(); setFullscreenIndex(media.indexOf(item)); }}
               >
                 {item.type === "image" ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -100,7 +100,7 @@ export default function ShareGalleryPage() {
       {/* Swipe FAB */}
       {media.length > 0 && (
         <button
-          onClick={() => router.push(`/share/${token}/swipe`)}
+          onClick={() => { haptics.tap(); router.push(`/share/${token}/swipe`); }}
           className="fixed bottom-8 right-6 z-40 flex items-center gap-2 rounded-full bg-purple-600 px-6 py-4 text-white shadow-xl shadow-purple-300/50 transition-all hover:scale-105 active:scale-95"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -116,10 +116,10 @@ export default function ShareGalleryPage() {
         return (
           <div
             className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
-            onClick={() => setFullscreenIndex(null)}
+            onClick={() => { haptics.tap(); setFullscreenIndex(null); }}
           >
             <button
-              onClick={() => setFullscreenIndex(null)}
+              onClick={() => { haptics.tap(); setFullscreenIndex(null); }}
               className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
             >
               <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

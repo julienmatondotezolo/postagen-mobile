@@ -50,7 +50,7 @@ export default function SwipePage() {
 
       const item = media[currentIndex];
       const newStatus = direction === "right" ? "liked" : "unliked";
-      if (direction === "right") haptics.success(); else haptics.error();
+      if (direction === "right") haptics.like(); else haptics.dislike();
 
       historyRef.current.push({ id: item.id, index: currentIndex });
       setCurrentIndex((prev) => prev + 1);
@@ -97,7 +97,7 @@ export default function SwipePage() {
       {/* Header */}
       <div className="relative z-20 flex items-center justify-between px-6 pt-8 pb-4">
         <button
-          onClick={() => router.push("/media")}
+          onClick={() => { haptics.tap(); router.push("/media"); }}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
         >
           <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -129,7 +129,7 @@ export default function SwipePage() {
             <h2 className="mb-2 text-2xl font-bold text-white">{t("media.allSorted")}</h2>
             <p className="text-white/50">{t("media.allSortedDesc")}</p>
             <button
-              onClick={() => router.push("/media")}
+              onClick={() => { haptics.tap(); router.push("/media"); }}
               className="mt-8 rounded-2xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg"
             >
               {t("media.backToMedia")}
@@ -200,10 +200,10 @@ export default function SwipePage() {
       {fullscreenMedia && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95"
-          onClick={() => setFullscreenMedia(null)}
+          onClick={() => { haptics.tap(); setFullscreenMedia(null); }}
         >
           <button
-            onClick={() => setFullscreenMedia(null)}
+            onClick={() => { haptics.tap(); setFullscreenMedia(null); }}
             className="absolute top-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-md"
           >
             <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

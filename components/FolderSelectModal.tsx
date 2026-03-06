@@ -134,7 +134,7 @@ export default function FolderSelectModal({
                 autoFocus
               />
               <button
-                onClick={handleCreate}
+                onClick={() => { haptics.tap(); handleCreate(); }}
                 disabled={creating || !newName.trim()}
                 className="rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 transition-all hover:bg-purple-700"
               >
@@ -143,7 +143,7 @@ export default function FolderSelectModal({
             </div>
           ) : (
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={() => { haptics.tap(); setShowCreate(true); }}
               className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-purple-200 py-3.5 text-sm font-semibold text-purple-600 transition-all hover:border-purple-400 hover:bg-purple-50"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

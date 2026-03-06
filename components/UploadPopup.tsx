@@ -2,10 +2,12 @@
 
 import { useUpload } from "@/lib/upload";
 import { useI18n } from "@/lib/i18n";
+import { useHaptics } from "@/lib/haptics";
 
 export default function UploadPopup() {
   const { t } = useI18n();
   const upload = useUpload();
+  const haptics = useHaptics();
 
   if (!upload.popupVisible) return null;
 
@@ -13,7 +15,7 @@ export default function UploadPopup() {
   if (upload.popupMinimized) {
     return (
       <button
-        onClick={upload.expandPopup}
+        onClick={() => { haptics.tap(); upload.expandPopup(); }}
         className="fixed bottom-24 left-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white shadow-lg transition-all hover:scale-105 active:scale-95"
       >
         {upload.percent}%
@@ -35,7 +37,7 @@ export default function UploadPopup() {
             <p className="text-sm font-bold text-gray-900">{t("upload.allUploaded")}</p>
           </div>
           <button
-            onClick={upload.dismissPopup}
+            onClick={() => { haptics.tap(); upload.dismissPopup(); }}
             className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
           >
             <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -56,7 +58,7 @@ export default function UploadPopup() {
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-bold text-gray-900">{t("upload.uploading")}</p>
         <button
-          onClick={upload.minimizePopup}
+          onClick={() => { haptics.tap(); upload.minimizePopup(); }}
           className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
         >
           <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

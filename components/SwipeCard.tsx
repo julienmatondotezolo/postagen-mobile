@@ -47,7 +47,7 @@ export default function SwipeCard({ media, onSwipe, onTap, isTop }: SwipeCardPro
 
     if (Math.abs(offset.x) > SWIPE_THRESHOLD) {
       const direction = offset.x > 0 ? "right" : "left";
-      haptics.swipe();
+      if (direction === "right") haptics.like(); else haptics.dislike();
       // Animate out
       const flyX = offset.x > 0 ? 500 : -500;
       setOffset({ x: flyX, y: offset.y });

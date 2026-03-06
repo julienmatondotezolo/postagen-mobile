@@ -88,7 +88,7 @@ export default function PostDetail() {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <button
-            onClick={() => router.back()}
+            onClick={() => { haptics.tap(); router.back(); }}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm border border-gray-50"
           >
             <svg
@@ -145,7 +145,7 @@ export default function PostDetail() {
                     ) : (
                       <div
                         className="relative h-full w-full cursor-pointer"
-                        onClick={() => setIsVideoPlaying(true)}
+                        onClick={() => { haptics.tap(); setIsVideoPlaying(true); }}
                       >
                         {post.thumbnail ? (
                           // eslint-disable-next-line @next/next/no-img-element
