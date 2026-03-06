@@ -1,19 +1,48 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useGeneration } from "@/lib/generation";
 import { useI18n } from "@/lib/i18n";
 import { useHaptics } from "@/lib/haptics";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function GenerationPopup() {
   const { t } = useI18n();
   const router = useRouter();
+  const pathname = usePathname();
   const generation = useGeneration();
   const haptics = useHaptics();
   const [minimized, setMinimized] = useState(false);
+  const autoDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-dismiss "done" popup after 8 seconds
+  useEffect(() => {
+    if (generation.status === "done") {
+      autoDismissRef.current = setTimeout(() => {
+        generation.dismiss();
+      }, 8000);
+      return () => {
+        if (autoDismissRef.current) clearTimeout(autoDismissRef.current);
+      };
+    }
+  }, [generation.status, generation]);
+
+  // Auto-dismiss "error" popup after 10 seconds
+  useEffect(() => {
+    if (generation.status === "error") {
+      autoDismissRef.current = setTimeout(() => {
+        generation.dismiss();
+      }, 10000);
+      return () => {
+        if (autoDismissRef.current) clearTimeout(autoDismissRef.current);
+      };
+    }
+  }, [generation.status, generation]);
 
   if (generation.status === "idle") return null;
+
+  // Hide popup while on /processing page — that page shows its own UI
+  if (pathname === "/processing") return null;
 
   // Minimized — small circle
   if (minimized && generation.status === "generating") {

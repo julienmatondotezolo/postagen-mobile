@@ -292,6 +292,7 @@ export default function ProfilePage() {
             {/* Logout Button */}
             <button
               onClick={async () => {
+                haptics.longError();
                 setIsLoggingOut(true);
                 await logout();
               }}
